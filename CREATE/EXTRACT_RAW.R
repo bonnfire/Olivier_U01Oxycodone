@@ -3,6 +3,37 @@ setwd("~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS")
 # after cohort 3, there are only new files
 
 
+## USEFUL FUNCTIONS
+
+# FOR ~NEW~ DIRECTORIES
+# #extract names to be assigned for various tables later
+process_subjects_new <- function(x){
+  
+  read_subjects_new <- function(x){
+    subjects <- fread(paste0("awk '/Subject/{print NR \"_\" $2}' ", "'", x, "'"),fill = T,header=F)
+    subjects$filename <- x
+    return(subjects)
+  }
+
+  read_meta_subjects_new <- function(x){
+    date_time <- fread(paste0("awk '/Start/{print $3}' ", "'", x, "'", " | sed 'N;s/\\r\\n/_/g'"),fill = T,header=F)
+    return(date_time)
+  }
+  date_time <- lapply(x, read_meta_subjects_new) %>% rbindlist() 
+  
+  names_sha_append <- lapply(x, read_subjects_new) %>% rbindlist() %>% rename("labanimalid"="V1") %>%
+    cbind(., date_time) %>% 
+    mutate(labanimalid = paste0( str_extract(labanimalid, "\\d+"), "_", 
+                                str_extract(toupper(labanimalid), "[MF]\\d{1,3}"), "_",
+                                str_extract(filename, "C\\d+"), "_",
+                                sub('.*HS', '', toupper(filename)), "_",
+                                sub(".*/.*/.*/", '', filename), "_",
+                                V1)) %>% # subject id, cohort, experiment, file/location perhaps
+  select(-V1)
+  
+  return(names_sha_append)
+  
+}
 
 
 
@@ -17,6 +48,8 @@ setwd("~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS")
 
 ###### NEW FILES ##############
 # label data with... 
+sha_new_files <- grep(grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*txt", inv = T, value = T), pattern = ".*SHA", value = T) # 72 files
+
 sha_subjects_new <- process_subjects_new(sha_new_files) %>% separate(labanimalid, c("row", "labanimalid"), sep = "_", extra = "merge") %>% 
   arrange(filename, as.numeric(row)) %>% select(-c(row, filename))
 read_rewards_new <- function(x){
