@@ -63,7 +63,7 @@ for (i in 1:(length(olivier_sha_measures)/2)){
   g <-  oxy_rawvsexcel %>% subset(grepl("SHA", exp)) %>% 
     ggplot(aes_string(x = olivier_sha_measures[i], y = olivier_sha_measures[i+1])) + 
     geom_point(aes(color = directory)) + 
-    labs(title = paste0(olivier_sha_measures[i], "_Raw_VS_Excel_U01_Olivier", "\n")) + 
+    labs(title = paste0("SHA_", olivier_sha_measures[i], "_Raw_VS_Excel_U01_Olivier", "\n")) + 
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
   
   # g_cohort <-  ggplot(rewards_sha_tograph, aes_string(x = olivier_sha_measures[i], y = olivier_sha_measures[i+3])) + 
@@ -92,8 +92,35 @@ dev.off()
 ##################
 ## LGA ########### 
 ##################
-setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Cocaine/QC")
+setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/QC")
+olivier_lga_measures <- grep("rewards", names(oxy_rawvsexcel), value = T) 
 
+# create plots 
+pdf("olivier_lga.pdf", onefile = T)
+for (i in 1:(length(olivier_lga_measures)/2)){
+  g <-  oxy_rawvsexcel %>% subset(grepl("LGA", exp)) %>% 
+    ggplot(aes_string(x = olivier_lga_measures[i], y = olivier_lga_measures[i+1])) + 
+    geom_point(aes(color = directory)) + 
+    labs(title = paste0("LGA_", olivier_lga_measures[i], "_Raw_VS_Excel_U01_Olivier", "\n")) + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+  
+  # g_cohort <-  ggplot(rewards_lga_tograph, aes_string(x = olivier_lga_measures[i], y = olivier_lga_measures[i+3])) + 
+  #   geom_point(aes(color = cohort_number)) + 
+  #   facet_grid(~ cohort_number)
+  #   labs(title = paste0(olivier_lga_measures[i], "_Raw_VS_Excel_U01_Kalivas", "\n")) + 
+  #   theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+  
+  print(g)
+  # print(g_cohort)
+}
+
+dev.off()
+# oxy_rawvsexcel %>% subset(grepl("LGA", exp)) %>% dim
+# oxy_rawvsexcel %>% subset(grepl("LGA", exp)) %>% subset(rewards_raw != rewards_excel) %>% dim # 141/4629 (3.0% of the data)
+# oxy_rawvsexcel %>% subset(rewards_raw == rewards_excel) %>% dim
+# oxy_rawvsexcel %>% subset(rewards_raw != rewards_excel) %>% 
+#   select(labanimalid, exp, filename, rewards_raw, rewards_excel) %>% 
+#   openxlsx::write.xlsx("lga_compare.xlsx")
 ### QCing raw data
 
 
@@ -103,9 +130,35 @@ setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Cocaine/QC
 ##################
 ## PR ############ 
 ##################
-setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Cocaine/QC")
+setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/QC")
+olivier_pr_measures <- grep("rewards", names(oxy_rawvsexcel), value = T) 
 
+# create plots 
+pdf("olivier_pr.pdf", onefile = T)
+for (i in 1:(length(olivier_pr_measures)/2)){
+  g <-  oxy_rawvsexcel %>% subset(grepl("PR", exp)) %>% 
+    ggplot(aes_string(x = olivier_pr_measures[i], y = olivier_pr_measures[i+1])) + 
+    geom_point(aes(color = directory)) + 
+    labs(title = paste0("PR_", olivier_pr_measures[i], "_Raw_VS_Excel_U01_Olivier", "\n")) + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+  
+  # g_cohort <-  ggplot(rewards_pr_tograph, aes_string(x = olivier_pr_measures[i], y = olivier_pr_measures[i+3])) + 
+  #   geom_point(aes(color = cohort_number)) + 
+  #   facet_grid(~ cohort_number)
+  #   labs(title = paste0(olivier_pr_measures[i], "_Raw_VS_Excel_U01_Kalivas", "\n")) + 
+  #   theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+  
+  print(g)
+  # print(g_cohort)
+}
+
+dev.off()
+# oxy_rawvsexcel %>% subset(grepl("PR", exp)) %>% dim
+# oxy_rawvsexcel %>% subset(grepl("PR", exp)) %>% subset(rewards_raw != rewards_excel) %>% dim # 249/1161 (21.4% of the data)
+# oxy_rawvsexcel %>% subset(rewards_raw == rewards_excel) %>% dim
+# oxy_rawvsexcel %>% subset(rewards_raw != rewards_excel) %>% 
+#   select(labanimalid, exp, filename, rewards_raw, rewards_excel) %>% 
+#   openxlsx::write.xlsx("pr_compare.xlsx")
 ### QCing raw data
-
 
 

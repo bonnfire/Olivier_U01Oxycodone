@@ -6,7 +6,9 @@ cohortfiles <- list.files(pattern = "*.xlsx")
 olivieroxy_excel <- list("C01"=selfadmin_rewards_cohort1,
                          "C02"=selfadmin_rewards_cohort3,
                          "C04"=selfadmin_rewards_cohort4,
-                         "C05"=selfadmin_rewards_cohort5) %>% rbindlist(idcol = "cohort", fill = T)
+                         "C05"=selfadmin_rewards_cohort5) %>% rbindlist(idcol = "cohort", fill = T) %>% 
+  clean_names() %>% # use this fxn to return df, use make_clean_names on vector 
+  rename("labanimalid" = "rat")
 # run this line after running all sections after cohort1
 
 
