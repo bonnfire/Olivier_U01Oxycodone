@@ -3,6 +3,13 @@
 
 
 cohortfiles <- list.files(pattern = "*.xlsx")
+olivieroxy_excel <- list("C01"=selfadmin_rewards_cohort1,
+                         "C02"=selfadmin_rewards_cohort3,
+                         "C04"=selfadmin_rewards_cohort4,
+                         "C05"=selfadmin_rewards_cohort5) %>% rbindlist(idcol = "cohort", fill = T)
+# run this line after running all sections after cohort1
+
+
 # 4 excels: 1,4 are both in the same format, 3 is similar but has comments in the names header, but 5 is in the format from the cocaine exp
 
 # olivierfiles_oxy <- function(filename){
@@ -122,7 +129,7 @@ dates <- grep("^\\d+", names(selfadmin), value = T) # use these columns to make 
 dates <- as.character(as.POSIXct(as.numeric(dates) * (60*60*24), origin="1899-12-30", tz="UTC", format="%Y-%m-%d")) # convert Excel character into dates
 
 setnames(selfadmin, toupper(as.character(selfadmin[1,]) )) # now that dates are moved into separate vector, remove from the column names 
-setnames(selfadmin,  mgsub::mgsub(names(selfadmin), c("PR2", "^T.+1$", "^T.+2$", "^T.+3$", "^T.+4$"), c("PR02", "PR03_T01", "PR04_T02", "PR05_T03", "PR06_T04")))
+setnames(selfadmin,  mgsub::mgsub(names(selfadmin), c("PR2", "^T.+1$", "^T.+2$", "^T.+3$", "^T.+4$", "LGA([1-9]{1})$"), c("PR02", "PR03_T01", "PR04_T02", "PR05_T03", "PR06_T04", "LGA0\\1")))
 names(selfadmin)[1] <- "RAT"
 selfadmin <- selfadmin[-1,]
 selfadmin <- remove_empty(selfadmin, "cols") # janitor::remove_empty_cols() deprecated
@@ -177,7 +184,8 @@ selfadmin$RAT <- ifelse(grepl("PR", selfadmin$RAT), as.character(stringr::str_ma
 # make experiment name unique (# code from G. Grothendieck (Stack Overflow) )
 uniquify <- function(x) if (length(x) == 1) x else sprintf("%s%02d", x, seq_along(x)) 
 selfadmin$RAT <- ave(selfadmin$RAT, selfadmin$RAT, FUN = uniquify) 
-selfadmin$RAT <- ifelse(grepl("PR0[3-6]", selfadmin$RAT, ignore.case = T), paste0(selfadmin$RAT, "_T0", 1:4), selfadmin$RAT) # append the treatment numbers to qualifying pr's
+selfadmin$RAT <- mgsub::mgsub(selfadmin$RAT, paste0("PR0", 3:6), paste0("PR0", 3:6, "_T0", 1:4)) # append the treatment numbers to qualifying pr's
+# selfadmin$RAT <- ifelse(grepl("PR0[3-6]", selfadmin$RAT, ignore.case = T), paste0(selfadmin$RAT, "_T0", 1:4), selfadmin$RAT) # append the treatment numbers to qualifying pr's
 selfadmin$RAT <- ifelse(grepl("ShA0[56]", selfadmin$RAT, ignore.case = T), paste0(selfadmin$RAT, "_special"), selfadmin$RAT) # drop these columns for now, used for special projects
 
 selfadmin_rewards_cohort5 <- selfadmin %>% select(matches("RAT|[MF]\\d+")) %>% t() %>% as.data.frame() %>% rownames_to_column() %>% as.data.table()
