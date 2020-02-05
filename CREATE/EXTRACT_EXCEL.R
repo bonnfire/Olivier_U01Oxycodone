@@ -5,20 +5,20 @@
 cohortfiles <- list.files(pattern = "*.xlsx")
 # 4 excels: 1,4 are both in the same format, 3 is similar but has comments in the names header, but 5 is in the format from the cocaine exp
 
-olivierfiles_oxy <- function(filename){
-  
-  
-  setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01/GWAS Self Administration Data/Oxy Data")
-  options(scipen = 100) # prevent sci notation
-  u01.importxlsx <- function(xlname){
-    df <- lapply(excel_sheets(path = xlname), read_excel, path = xlname)
-    names(df) <- excel_sheets(xlname)
-    return(df)
-  }
-  
-### put back into fxn once one works for one file
-  
-  }
+# olivierfiles_oxy <- function(filename){
+#   
+#   
+#   setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01/GWAS Self Administration Data/Oxy Data")
+#   options(scipen = 100) # prevent sci notation
+#   u01.importxlsx <- function(xlname){
+#     df <- lapply(excel_sheets(path = xlname), read_excel, path = xlname)
+#     names(df) <- excel_sheets(xlname)
+#     return(df)
+#   }
+#   
+# ### put back into fxn once one works for one file
+#   
+#   }
 
 ########################
 # COHORT 1 
@@ -56,7 +56,7 @@ selfadmin_split <- split(selfadmin, cumsum(1:nrow(selfadmin) %in% selfadmin_exps
 names(selfadmin_split) <- lapply(selfadmin_split, function(x){ x$RAT %>% head(1)}) %>% unlist() %>% as.character()
 selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grepl("^\\d", RFID))})
 selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement") %>% dplyr::filter(measurement != "COMMENT")
-selfadmin_rewards <- selfadmin_df %>% dplyr::filter(measurement == "ACTIVE")
+selfadmin_rewards_cohort1 <- selfadmin_df %>% dplyr::filter(measurement == "ACTIVE")
   
 # from cohort 3 # Prtreatment03
 # prtrtment04
@@ -103,7 +103,7 @@ selfadmin_split <- split(selfadmin, cumsum(1:nrow(selfadmin) %in% selfadmin_exps
 names(selfadmin_split) <- lapply(selfadmin_split, function(x){ x$RAT %>% head(1)}) %>% unlist() %>% as.character()
 selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grepl("^[MF]\\d+", RAT))})
 selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement")
-selfadmin_rewards <- selfadmin_df %>% dplyr::filter(measurement == "REWARDS")
+selfadmin_rewards_cohort3 <- selfadmin_df %>% dplyr::filter(measurement == "REWARDS")
 
 
 ########################
@@ -146,7 +146,7 @@ selfadmin_split <- split(selfadmin, cumsum(1:nrow(selfadmin) %in% selfadmin_exps
 names(selfadmin_split) <- lapply(selfadmin_split, function(x){ x$RAT %>% head(1)}) %>% unlist() %>% as.character()
 selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grepl("^[MF]\\d+", RAT))})
 selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement") %>% dplyr::filter(measurement != "COMMENT")
-selfadmin_rewards <- selfadmin_df %>% dplyr::filter(measurement == "REWARDS")
+selfadmin_rewards_cohort4 <- selfadmin_df %>% dplyr::filter(measurement == "REWARDS")
 
 ########################
 # COHORT 5
@@ -180,17 +180,17 @@ selfadmin$RAT <- ave(selfadmin$RAT, selfadmin$RAT, FUN = uniquify)
 selfadmin$RAT <- ifelse(grepl("PR0[3-6]", selfadmin$RAT, ignore.case = T), paste0(selfadmin$RAT, "_T0", 1:4), selfadmin$RAT) # append the treatment numbers to qualifying pr's
 selfadmin$RAT <- ifelse(grepl("ShA0[56]", selfadmin$RAT, ignore.case = T), paste0(selfadmin$RAT, "_special"), selfadmin$RAT) # drop these columns for now, used for special projects
 
-selfadmin_rewards <- selfadmin %>% select(matches("RAT|[MF]\\d+")) %>% t() %>% as.data.frame() %>% rownames_to_column() %>% as.data.table()
-selfadmin_rewards[ selfadmin_rewards == "n/a" ] <- NA 
-setnames(selfadmin_rewards, selfadmin_rewards[1,] %>% t() %>% unlist() %>% as.character %>% toupper)
-selfadmin_rewards <- selfadmin_rewards[-1,]
+selfadmin_rewards_cohort5 <- selfadmin %>% select(matches("RAT|[MF]\\d+")) %>% t() %>% as.data.frame() %>% rownames_to_column() %>% as.data.table()
+selfadmin_rewards_cohort5[ selfadmin_rewards_cohort5 == "n/a" ] <- NA 
+setnames(selfadmin_rewards_cohort5, selfadmin_rewards_cohort5[1,] %>% t() %>% unlist() %>% as.character %>% toupper)
+selfadmin_rewards_cohort5 <- selfadmin_rewards_cohort5[-1,]
 
 if(any(grepl("^[[:digit:]]{5,}", selfadmin$DATE))){
   selfadmin$DATE <- as.character(as.POSIXct(as.numeric(selfadmin$DATE) * (60*60*24), origin="1899-12-30", tz="UTC", format="%Y-%m-%d"))
 } # convert Excel character into dates
 dates <- selfadmin$DATE %>% na.omit
-nm <- names(selfadmin_rewards)[-c(1:2)] # make date columns for this vector of exp names  ## NOT MISSING THE RFID COLUMN
+nm <- names(selfadmin_rewards_cohort5)[-c(1:2)] # make date columns for this vector of exp names  ## NOT MISSING THE RFID COLUMN
 nm1 <- paste("date", nm, sep = "_") # make these date columns
-selfadmin_rewards[ , ( nm1 ) := lapply( dates, function(x) rep(x, each = .N) ) ] # make the date columns 
+selfadmin_rewards_cohort5[ , ( nm1 ) := lapply( dates, function(x) rep(x, each = .N) ) ] # make the date columns 
 
 
