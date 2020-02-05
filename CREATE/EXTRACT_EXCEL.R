@@ -36,7 +36,7 @@ setnames(selfadmin, toupper(as.character(selfadmin[1,]) )) # now that dates are 
 setnames(selfadmin,  sub("(PR\\d+)(TRTMEN)?(T)[0]?([1-9])", paste0("\\1_\\3", str_pad("\\4", 3, "left", "0")), names(selfadmin)) )
 selfadmin <- selfadmin[-1,]
 selfadmin <- remove_empty(selfadmin, "cols") # janitor::remove_empty_cols() deprecated
-selfadmin <- selfadmin[1:grep("average", selfadmin$RAT)[1],] # subset only the rewards table
+# selfadmin <- selfadmin[1:grep("average", selfadmin$RAT)[1],] # subset only the rewards table
 
 
 nm <- names(selfadmin)[-c(1:2)] %>% sub("(PR\\d+)(TRTMEN)?(T)[0]?([1-9])", paste0("\\1_\\3", str_pad("\\4", 3, "left", "0")), .) # make date columns for this vector of exp names 
@@ -63,34 +63,38 @@ selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grep
 ########################
 # COHORT 3
 ########################
+
+# this file doesn't have rfid's so will need to extract from the replacement table
 filename <- cohortfiles[2]
 selfadmin <- u01.importxlsx(filename)[[1]] %>%
   as.data.table
 selfadmin[ selfadmin == "n/a" ] <- NA # change all character n/a to actual NA
+
+# EXTRACT COMMENTS bc comments are stuck as header
+comments_df <- selfadmin[1:2,] %>% t() %>% as.data.frame() 
+setDT(comments_df, keep.rownames = TRUE)[]
+setnames(comments_df, comments_df[1,] %>% t() %>% unlist() %>% as.character)
+comments_df <- comments_df[-1, ]
+comments_df$comments <- comments_df$comments %>% gsub("[.]{3}\\d", NA,. ) 
+
 # set correct column names 
 # create date columns
 dates <- grep("^\\d+", selfadmin[3,] %>% unlist() %>% as.character(), value = T) # use these columns to make date columns # ignore anything else
 dates <- as.character(as.POSIXct(as.numeric(dates) * (60*60*24), origin="1899-12-30", tz="UTC", format="%Y-%m-%d")) # convert Excel character into dates
-
 setnames(selfadmin, toupper(as.character(selfadmin[4,]) )) # now that dates are moved into separate vector, remove from the column names 
-setnames(selfadmin,  sub("(PR\\d+)(TRTMEN)?(T)[0]?([1-9])", paste0("\\1_\\3", str_pad("\\4", 3, "left", "0")), names(selfadmin)) )
+setnames(selfadmin,  mgsub::mgsub(names(selfadmin), c("LGA15.*", "^PRT.+1$", "^PRT.+2$", "^PRT.+3$", "^PRT.+4$"), c("LGA15", "PR03_T01", "PR04_T02", "PR05_T03", "PR06_T04")))
 names(selfadmin)[1] <- "RAT"
-selfadmin <- selfadmin[-1,]
 selfadmin <- remove_empty(selfadmin, "cols") # janitor::remove_empty_cols() deprecated
-selfadmin <- selfadmin[1:grep("average", selfadmin$RAT)[1],] # subset only the rewards table
+# selfadmin <- selfadmin[1:grep("average", selfadmin$RAT)[1],] # subset only the rewards table
+# selfadmin <- selfadmin[-1,]
 
-
-nm <- names(selfadmin)[-c(1:2)] %>% sub("(PR\\d+)(TRTMEN)?(T)[0]?([1-9])", paste0("\\1_\\3", str_pad("\\4", 3, "left", "0")), .) # make date columns for this vector of exp names 
+nm <- names(selfadmin)[-1] # make date columns for this vector of exp names  ## MISSING THE RFID COLUMN SO THAT IS WHY [-1] INSTEAD OF [-c(1:2)]
 nm1 <- paste("date", nm, sep = "_") # make these date columns
 selfadmin[ , ( nm1 ) := lapply( dates, function(x) rep(x, each = .N) ) ] # make the date columns 
 
-comments <- selfadmin[which(selfadmin$RAT %in% c("COMMENT", "CONFLICT", "RESOLUTION"))] #extact comments
-
-selfadmin <- selfadmin[!which(selfadmin$RAT %in% c("COMMENT", "CONFLICT", "RESOLUTION"))]
-
-selfadmin_exps <- grep("REWARDS|ACTIVE|INACTIVE|PR", selfadmin$RAT)
+selfadmin_exps <- grep("REWARDS|ACTIVE|INACTIVE|PR$", selfadmin$RAT)
 selfadmin_split <- split(selfadmin, cumsum(1:nrow(selfadmin) %in% selfadmin_exps))
 names(selfadmin_split) <- lapply(selfadmin_split, function(x){ x$RAT %>% head(1)}) %>% unlist() %>% as.character()
-selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grepl("^\\d", RFID))})
-
-
+selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grepl("^[MF]\\d+", RAT))})
+selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement")
+selfadmin_rewards <- selfadmin_df %>% dplyr::filter(measurement == "REWARDS")
