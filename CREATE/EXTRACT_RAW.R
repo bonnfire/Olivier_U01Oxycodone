@@ -442,8 +442,8 @@ pr_rewards_new <- lapply(pr_new_files, readrewards_pr) %>% rbindlist() %>% separ
     into = c("labanimalid", "cohort", "exp", "filename", "date", "time"),
     sep = "_"
   ) %>% mutate(
-    date = lubridate::mdy(date) %>% as.character(),
-    time = chron::chron(times = time) %>% as.character
+    date = lubridate::mdy(date),
+    time = chron::chron(times = time)
   ) 
 # qc with...
 pr_rewards_new %>% count(labanimalid, exp, cohort) %>% subset(n!=1)
@@ -479,8 +479,8 @@ pr_subjects_old <- process_subjects_old(pr_old_files) ## quick qc pr_subjects_ol
 pr_rewards_old <- lapply(pr_old_files, read_fread_old, "rewards") %>% rbindlist() %>% separate(V1, into = c("row", "rewards"), sep = "_") %>% arrange(filename, as.numeric(row)) %>% select(-row) %>% 
   bind_cols(pr_subjects_old %>% arrange(filename, as.numeric(row)) %>% select(-c("row", "filename"))) %>% 
   separate(labanimalid, into = c("labanimalid", "box", "cohort", "exp", "computer", "date"), sep = "_") %>% 
-  mutate(date = lubridate::ymd(date),
-         rewards = rewards %>% as.numeric()) 
+  mutate(date = lubridate::ymd(date))
+         # rewards = rewards %>% as.numeric()) 
 # %>% 
 #   dplyr::filter(valid == "valid") # no need for distinct() bc it is not an issue here
 
