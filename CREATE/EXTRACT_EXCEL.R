@@ -132,7 +132,8 @@ nm <- names(selfadmin)[-1] # make date columns for this vector of exp names  ## 
 nm1 <- paste("date", nm, sep = "_") # make these date columns
 selfadmin[ , ( nm1 ) := lapply( dates, function(x) rep(x, each = .N) ) ] # make the date columns 
 
-comments_df <- selfadmin[which(selfadmin$RAT %in% c("COMMENT", "CONFLICT", "RESOLUTION"))] #extract comments
+#extract comments
+comments_df <- selfadmin[which(selfadmin$RAT %in% c("COMMENT", "CONFLICT", "RESOLUTION"))]
 comments_df <- comments_df %>% select(-matches("RFID|date")) %>% t() %>% 
   as.data.frame() %>% 
   rownames_to_column()
@@ -146,5 +147,50 @@ names(selfadmin_split) <- lapply(selfadmin_split, function(x){ x$RAT %>% head(1)
 selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grepl("^[MF]\\d+", RAT))})
 selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement") %>% dplyr::filter(measurement != "COMMENT")
 selfadmin_rewards <- selfadmin_df %>% dplyr::filter(measurement == "REWARDS")
+
+########################
+# COHORT 5
+########################
+filename <- cohortfiles[4]
+selfadmin <- u01.importxlsx(filename)[[1]] %>%
+  as.data.table
+# turn all into character for preservation in transpose
+selfadmin[, names(selfadmin) := lapply(.SD, as.character)]
+setnames(selfadmin, names(selfadmin) %>% make_clean_names() %>% toupper)
+
+#extract comments
+comments_df <- selfadmin %>% select(matches("RAT|COMMENT|CONFLICT|RESOLUTION|FLAG"))
+names(comments_df)[1] <- "Exp"
+setnames(comments_df, tolower(names(comments_df)))
+# selfadmin <- selfadmin[!which(selfadmin$RAT %in% c("COMMENT", "CONFLICT", "RESOLUTION"))]
+
+# XX extract data dictionary DO MORE WORK ON THIS AFTER SUBMITTING QC REPORTS XX
+datadictionary <- selfadmin %>% select(matches("RAT|VARIABLE_TYPE|DESCRIPTION")) # vertical formatting is preferred in selfadmin
+# colnames(datadictionary) <- c("var_abbv", "var_type", "var_graphtext")
+# datadictionary$var_description <- NA
+# uniquify_graphtext <- function(x) if (length(x) == 1) x else paste0(sprintf("%s on day %02d", x, seq_along(x)))
+# datadictionary$var_graphtext <- ave(datadictionary$var_graphtext, datadictionary$var_graphtext, FUN = uniquify_graphtext)
+
+# clean exp names before t(), transpose and process exps, dates, and data
+selfadmin$RAT <- ifelse(grepl("^\\D{2}A", selfadmin$RAT), as.character(stringr::str_match(selfadmin$RAT,"^\\D{2}A")), selfadmin$RAT) # reg exp fixes issuse of extracting mA
+selfadmin$RAT <- ifelse(grepl("PR", selfadmin$RAT), as.character(stringr::str_match(selfadmin$RAT,"PR")), selfadmin$RAT)
+# make experiment name unique (# code from G. Grothendieck (Stack Overflow) )
+uniquify <- function(x) if (length(x) == 1) x else sprintf("%s%02d", x, seq_along(x)) 
+selfadmin$RAT <- ave(selfadmin$RAT, selfadmin$RAT, FUN = uniquify) 
+selfadmin$RAT <- ifelse(grepl("PR0[3-6]", selfadmin$RAT, ignore.case = T), paste0(selfadmin$RAT, "_T0", 1:4), selfadmin$RAT) # append the treatment numbers to qualifying pr's
+selfadmin$RAT <- ifelse(grepl("ShA0[56]", selfadmin$RAT, ignore.case = T), paste0(selfadmin$RAT, "_special"), selfadmin$RAT) # drop these columns for now, used for special projects
+
+selfadmin_rewards <- selfadmin %>% select(matches("RAT|[MF]\\d+")) %>% t() %>% as.data.frame() %>% rownames_to_column() %>% as.data.table()
+selfadmin_rewards[ selfadmin_rewards == "n/a" ] <- NA 
+setnames(selfadmin_rewards, selfadmin_rewards[1,] %>% t() %>% unlist() %>% as.character %>% toupper)
+selfadmin_rewards <- selfadmin_rewards[-1,]
+
+if(any(grepl("^[[:digit:]]{5,}", selfadmin$DATE))){
+  selfadmin$DATE <- as.character(as.POSIXct(as.numeric(selfadmin$DATE) * (60*60*24), origin="1899-12-30", tz="UTC", format="%Y-%m-%d"))
+} # convert Excel character into dates
+dates <- selfadmin$DATE %>% na.omit
+nm <- names(selfadmin_rewards)[-c(1:2)] # make date columns for this vector of exp names  ## NOT MISSING THE RFID COLUMN
+nm1 <- paste("date", nm, sep = "_") # make these date columns
+selfadmin_rewards[ , ( nm1 ) := lapply( dates, function(x) rep(x, each = .N) ) ] # make the date columns 
 
 
