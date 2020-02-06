@@ -17,9 +17,11 @@ ratinfo_list_deaths_processed <- ratinfo_list_deaths %>%
          rfid = as.character(rfid), 
          tailmark = str_match(`tail_mark`, "(M|F)[[0-9]]+")[, 1],
          naive = ifelse(grepl("Naive", `tail_mark`, ignore.case = T), "yes", "no"),
-         datedropped = openxlsx::convertToDateTime(`day_excluded`)) 
-         # datedropped = replace(datedropped, `Day Excluded` == "9/12/207", "2017-09-12")) %>% 
-  select(cohort, rfid, tailmark, naive, datedropped, reasoning )
+         datedropped = openxlsx::convertToDateTime(`day_excluded`)) %>% 
+  # datedropped = replace(datedropped, `Day Excluded` == "9/12/207", "2017-09-12"))  %>% 
+  separate_rows(c(day_excluded, reasoning),  sep = ";", convert = FALSE) %>% 
+  mutate(datedropped = coalesce(lubridate::ymd(datedropped), lubridate::mdy(day_excluded))) %>% 
+  select(cohort, rfid, tailmark, naive, datedropped, reasoning ) %>% as.data.frame()
 
 
 ratinfo_list_replacements_processed <- ratinfo_list_replacements %>% 
