@@ -203,7 +203,7 @@ date_time_subject_df_comp <- left_join(date_time_subject_no0, olivieroxy_excel_d
     grepl("SHA", exp) & experiment_duration > 115 & excel_date == start_date~ "yes",
     grepl("LGA", exp) & experiment_duration > 355 & excel_date == start_date~ "yes",
     grepl("PR", exp) & experiment_duration > 60 & excel_date == start_date~ "yes",
-    TRUE ~ "no")  ) ## XX check if we use start or end date; fix the mislabelled files
+    TRUE ~ "no")  ) ## XX check if we use start or end date; fix the mislabelled files XXXX PICK UP HERE 
 
 
 
