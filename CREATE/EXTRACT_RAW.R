@@ -142,50 +142,45 @@ date_time_subject <- data.frame(labanimalid = gsub(".*Subject: ", "", grep("Subj
 dupeids <- date_time_subject %>% subset(grepl("^[MF]", labanimalid)) %>% 
   distinct(labanimalid) %>% select(labanimalid) %>% mutate(numbers = gsub("[^\\d]+", "", labanimalid, perl = T)) %>% 
   get_dupes(numbers)
-# date_time_subject_ <- date_time_subject # make copy to edit 
-date_time_subject_mut <- date_time_subject %>% subset(labanimalid%in% dupeids$labanimalid) %>% add_count(labanimalid) %>% 
+# correct assignment of the reference id's
+date_time_subject_mut <- date_time_subject %>% subset(labanimalid%in% dupeids$labanimalid) %>% add_count(labanimalid) %>% # find trouble cases, use the frequency of occurence to determine which one is wrong, switch gender, and reattach to data
   mutate(labanimalid = ifelse(n < 5 & grepl("^F", labanimalid), gsub("F", "M", labanimalid),
-                                    ifelse(n < 5 & grepl("^M", labanimalid), 
-                                           gsub("M", "F", labanimalid), labanimalid))) %>% 
+                              ifelse(n < 5 & grepl("^M", labanimalid), 
+                                     gsub("M", "F", labanimalid), labanimalid))) %>% 
   select(-n) %>% as.data.frame() %>% 
-  left_join(date_time_subject, ., by = c("cohort", "exp", "start_date", "end_date", "box", "start_time", "end_time", "filename", "directory", "start_datetime", "end_datetime", "experiment_duration"))
+  left_join(date_time_subject, ., 
+            by = c("cohort", "exp", "start_date", "end_date", "box", "start_time", "end_time", "filename", "directory", "start_datetime", "end_datetime", "experiment_duration")) %>% # gets the correct labanimals for reference to fill in the missing animals
+  mutate(numbers = coalesce(labanimalid.x, labanimalid.y)) %>% # not yet labanimalid bc there are unassigned values 
+  select(-matches("[.]")) 
+# using reference id's to assign unlabelled sexes
+date_time_subject_mut <- date_time_subject_mut %>% 
+  left_join(., date_time_subject_mut %>% 
+              select(numbers) %>% 
+              dplyr::filter(grepl("^[MF]", numbers)) %>% 
+              mutate(numbersonly = gsub("[^\\d]+", "", numbers, perl = T)) %>% distinct(), 
+            by = c("numbers" = "numbersonly")) %>% 
+  mutate(labanimalid = coalesce(numbers.y, numbers)) %>%
+  select(-matches("[.]|numbers")) %>% 
+  select(labanimalid, everything())
+# check date_time_subject_mut$labanimalid %>% table()
 
-# correct assignment
-corrected <- date_time_subject %>% select(labanimalid) %>% 
-  rename("numbers" = "labanimalid") %>% 
-  dplyr::filter(grepl("^[1-9]", numbers)) %>% 
-  left_join(., date_time_subject_mut %>% select(labanimalid) %>% 
-              dplyr::filter(grepl("^[MF]", labanimalid)) %>% 
-              mutate(numbers = gsub("[^\\d]+", "", labanimalid, perl = T)))
+# fix subject 0
 
-dupeids <- grep("^[MF]", date_time_subject$labanimalid, value=T) %>% unique %>% 
-  as.data.frame() %>% 
-  rename("labanimalid" = ".") %>% 
-  mutate(numbers = gsub("[^\\d]+", "", labanimalid, perl = T)) %>% 
-  get_dupes(numbers)
+date_time_subject_no0 <- date_time_subject_mut %>% mutate_all(as.character) %>% left_join(., date_time_subject_mut %>% split(., .$cohort) %>% lapply(., function(x){
+  x <- x %>% 
+    mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA)) %>% 
+    arrange(room, as.numeric(box)) %>% 
+    dplyr::filter(!grepl("[MF]", labanimalid)|lead(!grepl("[MF]", labanimalid))|lag(!grepl("[MF]", labanimalid))) %>% 
+    mutate(dbcomment = ifelse(!grepl("[MF]", labanimalid), "box info used to fill labanimalid", NA)) %>% 
+    group_by(box) %>% mutate(labanimalid = labanimalid[grepl("[MF]", labanimalid)][1]) %>%  # spot checking for deaths
+    arrange(labanimalid, start_date) 
+  return(x)
+}) %>% rbindlist(.) %>% mutate_all(as.character) , by = c("cohort", "exp", "start_date", "end_date", "box", "start_time", "end_time", "filename", "directory", "start_datetime", "end_datetime", "experiment_duration")) %>% 
+  mutate(labanimalid = coalesce(labanimalid.y, labanimalid.x)) %>%
+  select(-matches("[.]")) %>% 
+  select(labanimalid, everything()) %>% 
+  mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA))
 
-mistake %>% as.data.frame() %>% rename("numbers" = ".") %>%  left_join(
-  .,
-  corrected %>% as.data.frame() %>% rename("labanimalid" = ".") %>%  mutate(numbers = gsub("[^\\d]+", "", labanimalid, perl = T))
-)
-
-
-
-
-mistake <- grep("^[1-9]", date_time_subject$labanimalid, value=T)
-corrected <- grep("^[MF]", date_time_subject$labanimalid, value=T) %>% unique
-
-mistake %>% as.data.frame() %>% rename("numbers" = ".") %>%  left_join(
-  .,
-  corrected %>% as.data.frame() %>% rename("labanimalid" = ".") %>%  mutate(numbers = gsub("[^\\d]+", "", labanimalid, perl = T))
-)
-
-# string <- date_time_subject_mut$labanimalid
-# mistake <- grep("^[1-9]", string, value=T)
-# corrected <- grep("^[MF]", string, value=T) %>% unique
-
-
-date_time_subject_mut %>% subset(labanimalid %in% dupeids$labanimalid)
 
 # date_time_subject_mut[str_detect(date_time_subject_mut$labanimalid, "^(M|F)\\d{4}", negate = F),]
 # date_time_subject_df %>% subset(labanimalid == "0") %>% group_by(filename) %>% dplyr::filter(n() > 5) # more than 5 is most likely a broken file but less than five is most likely a dead rat? 
