@@ -15,7 +15,8 @@ olivieroxy_excel_dateslong <- olivieroxy_excel %>% select(matches("date|cohort")
   gather(v, value, date_sha01:date_sha06_special) %>% separate(v, c("date", "exp"), sep = "_", extra = "merge") %>% 
   arrange(cohort) %>% 
   select(-date) %>% 
-  mutate(exp = toupper(exp)) %>% 
+  mutate(exp = toupper(exp),
+         value = as.character(lubridate::ymd(value))) %>% 
   rename("excel_date" = "value")
 
 
