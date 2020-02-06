@@ -10,6 +10,15 @@ olivieroxy_excel <- list("C01"=selfadmin_rewards_cohort1,
                          "C05"=selfadmin_rewards_cohort5) %>% rbindlist(idcol = "cohort", fill = T) %>% 
   clean_names() %>% # use this fxn to return df, use make_clean_names on vector 
   rename("labanimalid" = "rat")
+
+olivieroxy_excel_dateslong <- olivieroxy_excel %>% select(matches("date|cohort")) %>% distinct() %>% # for record keeping, make sure to make this change on the actual excel! 
+  gather(v, value, date_sha01:date_sha06_special) %>% separate(v, c("date", "exp"), sep = "_", extra = "merge") %>% 
+  arrange(cohort) %>% 
+  select(-date) %>% 
+  mutate(exp = toupper(exp)) %>% 
+  rename("excel_date" = "value")
+
+
 # run this line after running all sections after cohort1
 
 ## to extract the mapping excels 

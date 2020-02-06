@@ -183,26 +183,9 @@ date_time_subject_no0 <- date_time_subject_mut %>% mutate_all(as.character) %>% 
 
 
 # date_time_subject_mut[str_detect(date_time_subject_mut$labanimalid, "^(M|F)\\d{4}", negate = F),]
-# date_time_subject_df %>% subset(labanimalid == "0") %>% group_by(filename) %>% dplyr::filter(n() > 5) # more than 5 is most likely a broken file but less than five is most likely a dead rat? 
 date_time_subject_mut$labanimalid %>% table()
 
-#trying to fix the subject 0
-subject0 <- date_time_subject_mut %>% split(., .$cohort) %>% lapply(., function(x){
-  x <- x %>% 
-    dplyr::filter(!grepl("SHOCK", exp)) %>% 
-    mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA)) %>% 
-    arrange(room, as.numeric(box)) %>% 
-    dplyr::filter(!grepl("[MF]", labanimalid)|lead(!grepl("[MF]", labanimalid))|lag(!grepl("[MF]", labanimalid))) %>% 
-    mutate(dbcomment = ifelse(!grepl("[MF]", labanimalid), "box info used to fill labanimalid", NA)) %>% 
-    group_by(box) %>% mutate(labanimalid = labanimalid[grepl("[MF]", labanimalid)][1],
-                             labanimalid = replace(labanimalid, cohort == "C04"&box == "2", "F402"),
-                             labanimalid = replace(labanimalid, cohort == "C04"&box == "4", "F404")) %>%  # spot checking for deaths
-    arrange(labanimalid, start_date) 
-    return(x)
-  }) %>%  rbindlist(., idcol = "cohort")
-
 # replace rbindlist... with openxlsx::write.xlsx(., "labanimalid_assign_bybox.xlsx") to create the excel sheets that I sent to their lab 
-subject0[[3]] <- NULL
 # subject0 %>% openxlsx::write.xlsx(., "labanimalid_assign_bybox.xlsx")
 
 # trying to fix subject 0 for shock files 
