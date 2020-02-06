@@ -97,42 +97,96 @@ read_fread_old <- function(x, varname){
 
 
 
-## TO VALIDATE ENTRIES  
 
-date_time_subject_df_comp <- 
-  
-  
+
+
+
+
+
+
+
+
+
+## TO VALIDATE ENTRIES  (seems to only work for new directories)
 ## extract date and start time/end time to determine valid sessions
-read_date_time_subject <- system("grep -a7r --no-group-separator \"Start Date: \" . | grep -E \"(Start Date|End|Subject|Box|Start Time|End Time):\"", intern = T)
+read_date_time_subject <- system("grep -a7r --no-group-separator \"Start Date: \" . | grep -E \"((Start|End) (Date|Time)|Subject|Box):\"", intern = T)
 read_date_time_subject <- gsub("\\r", "", read_date_time_subject)
-read_date_time_subject <- read_date_time_subject[!grepl("/LGA/:", read_date_time_subject)] # remove the duplicate file # removed on 1/27
 
 date_time_subject <- data.frame(labanimalid = gsub(".*Subject: ", "", grep("Subject", read_date_time_subject, value = T)) %>% toupper,
-                                   cohort = str_match(grep("Subject", read_date_time_subject, value = T), "C\\d{2}") %>% unlist() %>% as.character(),  
-                                   exp = toupper(sub('.*HS', '', grep("Subject", read_date_time_subject, value = T) %>% gsub("-Subject.*", "", .))),
-                                   start_date = gsub(".*Start Date: ", "", grep("Start Date:", read_date_time_subject, value = T)),
-                                   box = gsub(".*Box: ", "", grep("Box", read_date_time_subject, value = T)),
-                                   start_time = gsub(".*Start Time: ", "", grep("Start Time", read_date_time_subject, value = T)),
-                                   end_time = gsub(".*End Time: ", "", grep("End Time", read_date_time_subject, value = T)),
-                                   filename = sub(".*/.*/.*/", '', grep("Subject", read_date_time_subject, value = T)) %>% gsub("-Subject.*", "", .),
-                                   directory = str_match(grep("Subject", read_date_time_subject, value = T) %>% gsub("-Subject.*", "", .), "New_medassociates|Old") %>% unlist() %>% as.character()
-)
-
-date_time_subject_mut <- date_time_subject %>% 
-  mutate(start_date = lubridate::mdy(format(as.Date(start_date, "%m/%d/%y"), "%m/%d/20%y")),
-         start_time = chron::chron(times = start_time),
-         end_time = chron::chron(times = end_time), 
-         experiment_duration = end_time - start_time,
-         experiment_duration = 60 * 24 * as.numeric(chron::times(experiment_duration))
-         ) %>% 
+                                cohort = str_match(grep("Subject", read_date_time_subject, value = T), "C\\d{2}") %>% unlist() %>% as.character(),  
+                                exp = toupper(sub('.*HSOXY', '', grep("Subject", read_date_time_subject, value = T) %>% gsub("-Subject.*", "", .))),
+                                start_date = gsub(".*Start Date: ", "", grep("Start Date:", read_date_time_subject, value = T)),
+                                end_date = gsub(".*End Date: ", "", grep("End Date:", read_date_time_subject, value = T)),
+                                box = gsub(".*Box: ", "", grep("Box", read_date_time_subject, value = T)),
+                                start_time = gsub(".*Start Time: ", "", grep("Start Time", read_date_time_subject, value = T)),
+                                end_time = gsub(".*End Time: ", "", grep("End Time", read_date_time_subject, value = T)),
+                                filename = sub(".*/.*/.*/", '', grep("Subject", read_date_time_subject, value = T)) %>% gsub("-Subject.*", "", .),
+                                directory = str_match(grep("Subject", read_date_time_subject, value = T) %>% gsub("-Subject.*", "", .), "New_medassociates|Old") %>% unlist() %>% as.character()
+) %>% 
   mutate_if(is.factor, as.character) %>% 
-  mutate(labanimalid = replace(labanimalid, labanimalid == "M7678", "M768"),
-         labanimalid = replace(labanimalid, labanimalid == "X", "F507"),
-         labanimalid = replace(labanimalid, labanimalid == "717", "F717")) %>% # verified by box
-  mutate(labanimalid = if_else(grepl("^C0", labanimalid), str_match(labanimalid,"[FM]\\d{1,3}" %>% unlist() %>% as.character()), labanimalid %>% as.character()))
+  mutate(exp = mgsub::mgsub(exp, c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4)))) %>% 
+  mutate(start_datetime = lubridate::mdy_hms(paste(format(as.Date(start_date, "%m/%d/%y"), "%m/%d/20%y"), start_time)),
+         end_datetime = lubridate::mdy_hms(paste(format(as.Date(end_date, "%m/%d/%y"), "%m/%d/20%y"), end_time)),
+         experiment_duration = difftime(end_datetime, start_datetime, units = "mins") %>% as.numeric() %>% round(0))
+         
+  # mutate(labanimalid = replace(labanimalid, labanimalid == "M7678", "M768"),
+  #        labanimalid = replace(labanimalid, labanimalid == "X", "F507"),
+  #        labanimalid = replace(labanimalid, labanimalid == "717", "F717")) %>% # verified by box
+  # mutate(labanimalid = if_else(grepl("^C0", labanimalid), str_match(labanimalid,"[FM]\\d{1,3}" %>% unlist() %>% as.character()), labanimalid %>% as.character()))
 
 ## problems in being too lax in accepting all forms of subjects 
 # gsub(".*Subject: ", "", grep("Subject", read_date_time_subject, value = T)) %>% toupper %>% table() # before processing
+
+# fix the missexed animals and assignment
+# mixed animals 
+dupeids <- date_time_subject %>% subset(grepl("^[MF]", labanimalid)) %>% 
+  distinct(labanimalid) %>% select(labanimalid) %>% mutate(numbers = gsub("[^\\d]+", "", labanimalid, perl = T)) %>% 
+  get_dupes(numbers)
+# date_time_subject_ <- date_time_subject # make copy to edit 
+date_time_subject_mut <- date_time_subject %>% subset(labanimalid%in% dupeids$labanimalid) %>% add_count(labanimalid) %>% 
+  mutate(labanimalid = ifelse(n < 5 & grepl("^F", labanimalid), gsub("F", "M", labanimalid),
+                                    ifelse(n < 5 & grepl("^M", labanimalid), 
+                                           gsub("M", "F", labanimalid), labanimalid))) %>% 
+  select(-n) %>% as.data.frame() %>% 
+  left_join(date_time_subject, ., by = c("cohort", "exp", "start_date", "end_date", "box", "start_time", "end_time", "filename", "directory", "start_datetime", "end_datetime", "experiment_duration"))
+
+# correct assignment
+corrected <- date_time_subject %>% select(labanimalid) %>% 
+  rename("numbers" = "labanimalid") %>% 
+  dplyr::filter(grepl("^[1-9]", numbers)) %>% 
+  left_join(., date_time_subject_mut %>% select(labanimalid) %>% 
+              dplyr::filter(grepl("^[MF]", labanimalid)) %>% 
+              mutate(numbers = gsub("[^\\d]+", "", labanimalid, perl = T)))
+
+dupeids <- grep("^[MF]", date_time_subject$labanimalid, value=T) %>% unique %>% 
+  as.data.frame() %>% 
+  rename("labanimalid" = ".") %>% 
+  mutate(numbers = gsub("[^\\d]+", "", labanimalid, perl = T)) %>% 
+  get_dupes(numbers)
+
+mistake %>% as.data.frame() %>% rename("numbers" = ".") %>%  left_join(
+  .,
+  corrected %>% as.data.frame() %>% rename("labanimalid" = ".") %>%  mutate(numbers = gsub("[^\\d]+", "", labanimalid, perl = T))
+)
+
+
+
+
+mistake <- grep("^[1-9]", date_time_subject$labanimalid, value=T)
+corrected <- grep("^[MF]", date_time_subject$labanimalid, value=T) %>% unique
+
+mistake %>% as.data.frame() %>% rename("numbers" = ".") %>%  left_join(
+  .,
+  corrected %>% as.data.frame() %>% rename("labanimalid" = ".") %>%  mutate(numbers = gsub("[^\\d]+", "", labanimalid, perl = T))
+)
+
+# string <- date_time_subject_mut$labanimalid
+# mistake <- grep("^[1-9]", string, value=T)
+# corrected <- grep("^[MF]", string, value=T) %>% unique
+
+
+date_time_subject_mut %>% subset(labanimalid %in% dupeids$labanimalid)
+
 # date_time_subject_mut[str_detect(date_time_subject_mut$labanimalid, "^(M|F)\\d{4}", negate = F),]
 # date_time_subject_df %>% subset(labanimalid == "0") %>% group_by(filename) %>% dplyr::filter(n() > 5) # more than 5 is most likely a broken file but less than five is most likely a dead rat? 
 date_time_subject_mut$labanimalid %>% table()
@@ -222,6 +276,11 @@ date_time_subject_df_comp <- left_join(date_time_subject_df, cohorts_exp_date, b
     grepl("PR", exp) & experiment_duration > 60 & excel_date == start_date~ "yes"),
     valid = replace(valid, is.na(valid), "no")
   ) # 9808 for cohorts C01-C09 (no C06) ## change the minimum times - Olivier (from 1/24 meeting)
+
+
+
+
+
 
 
 
