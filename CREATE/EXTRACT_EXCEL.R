@@ -1,8 +1,9 @@
-# setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01")
+setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01")
 ## temporarily using this one: 
 
 
 cohortfiles <- list.files(pattern = "*.xlsx")
+# 4 excels: 1,4 are both in the same format, 3 is similar but has comments in the names header, but 5 is in the format from the cocaine exp
 olivieroxy_excel <- list("C01"=selfadmin_rewards_cohort1,
                          "C02"=selfadmin_rewards_cohort3,
                          "C04"=selfadmin_rewards_cohort4,
@@ -11,8 +12,11 @@ olivieroxy_excel <- list("C01"=selfadmin_rewards_cohort1,
   rename("labanimalid" = "rat")
 # run this line after running all sections after cohort1
 
+## to extract the mapping excels 
+setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01/Rat Information/Oxycodone")
+cohortinfofiles <- list.files(pattern = "*.xlsx")
 
-# 4 excels: 1,4 are both in the same format, 3 is similar but has comments in the names header, but 5 is in the format from the cocaine exp
+
 
 # olivierfiles_oxy <- function(filename){
 #   
@@ -66,13 +70,6 @@ names(selfadmin_split) <- lapply(selfadmin_split, function(x){ x$RAT %>% head(1)
 selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grepl("^\\d", RFID))})
 selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement") %>% dplyr::filter(measurement != "COMMENT")
 selfadmin_rewards_cohort1 <- selfadmin_df %>% dplyr::filter(measurement == "ACTIVE")
-  
-# from cohort 3 # Prtreatment03
-# prtrtment04
-# Prtrtment02
-# Prtrtment01
-# lga15pretrt
-
 
 
 ########################
@@ -115,6 +112,16 @@ selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement")
 selfadmin_rewards_cohort3 <- selfadmin_df %>% dplyr::filter(measurement == "REWARDS")
 
 
+# EXTRACT RFID
+filename <- cohortinfofiles[2]
+cohortinfo <- u01.importxlsx(filename)[[1]] %>% as.data.frame()
+names(cohortinfo) <-  mgsub::mgsub(names(cohortinfo),
+                                   c(" |\\.", "#", "Transponder ID", "Date of Wean|Wean Date","Animal", "Shipping|Ship", "Dams"),
+                                   c("", "Number", "RFID", "DOW","LabAnimal", "Shipment", "Dames")) 
+# join rfid onto the rewards
+selfadmin_rewards_cohort3 <- selfadmin_rewards_cohort3 %>% 
+  left_join(cohortinfo[, c("RAT", "RFID")], ., by = c("RAT"))
+
 ########################
 # COHORT 4
 ########################
@@ -156,6 +163,19 @@ names(selfadmin_split) <- lapply(selfadmin_split, function(x){ x$RAT %>% head(1)
 selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grepl("^[MF]\\d+", RAT))})
 selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement") %>% dplyr::filter(measurement != "COMMENT")
 selfadmin_rewards_cohort4 <- selfadmin_df %>% dplyr::filter(measurement == "REWARDS")
+
+
+
+# EXTRACT RFID
+filename <- cohortinfofiles[3]
+cohortinfo <- u01.importxlsx(filename)[[1]] %>% as.data.frame()
+names(cohortinfo) <-  mgsub::mgsub(names(cohortinfo),
+                                   c(" |\\.", "#", "Transponder ID", "Date of Wean|Wean Date","Animal", "Shipping|Ship", "Dams"),
+                                   c("", "Number", "RFID", "DOW","LabAnimal", "Shipment", "Dames")) 
+# join rfid onto the rewards
+selfadmin_rewards_cohort4 <- selfadmin_rewards_cohort4 %>% 
+  left_join(cohortinfo[, c("RAT", "RFID")], ., by = c("RAT"))
+
 
 ########################
 # COHORT 5
