@@ -165,7 +165,6 @@ date_time_subject_mut <- date_time_subject_mut %>%
 # check date_time_subject_mut$labanimalid %>% table()
 
 # fix subject 0
-
 date_time_subject_no0 <- date_time_subject_mut %>% mutate_all(as.character) %>% left_join(., date_time_subject_mut %>% split(., .$cohort) %>% lapply(., function(x){
   x <- x %>% 
     mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA)) %>% 
@@ -174,7 +173,7 @@ date_time_subject_no0 <- date_time_subject_mut %>% mutate_all(as.character) %>% 
     mutate(dbcomment = ifelse(!grepl("[MF]", labanimalid), "box info used to fill labanimalid", NA)) %>% 
     group_by(box) %>% mutate(labanimalid = labanimalid[grepl("[MF]", labanimalid)][1]) %>%  # spot checking for deaths
     arrange(labanimalid, start_date) 
-  return(x)
+  return(x) # remove labanimalid0 or blank subset from original df and then insert the corrected ones (keep the dbcomment variable)
 }) %>% rbindlist(.) %>% mutate_all(as.character) , by = c("cohort", "exp", "start_date", "end_date", "box", "start_time", "end_time", "filename", "directory", "start_datetime", "end_datetime", "experiment_duration")) %>% 
   mutate(labanimalid = coalesce(labanimalid.y, labanimalid.x)) %>%
   select(-matches("[.]")) %>% 
@@ -188,32 +187,8 @@ date_time_subject_mut$labanimalid %>% table()
 # replace rbindlist... with openxlsx::write.xlsx(., "labanimalid_assign_bybox.xlsx") to create the excel sheets that I sent to their lab 
 # subject0 %>% openxlsx::write.xlsx(., "labanimalid_assign_bybox.xlsx")
 
-# trying to fix subject 0 for shock files 
-date_time_subject_mut %>% split(., .$cohort) %>% lapply(., function(x){
-  x <- x %>% 
-    dplyr::filter(grepl("SHOCK", exp)) %>% 
-    mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA)) %>% 
-    dplyr::filter(!grepl("[MF]", labanimalid)|lead(!grepl("[MF]", labanimalid))|lag(!grepl("[MF]", labanimalid))) %>% 
-    arrange(room, as.numeric(box))
-  return(x)
-}) 
-
-# remove labanimalid0 or blank subset from original df and then insert the corrected ones (keep the dbcomment variable)
-date_time_subject_df <- date_time_subject_mut %>% 
-  dplyr::filter(grepl("[MF]", labanimalid)) %>% 
-  plyr::rbind.fill(., subject0) %>% # rbind with the added function of creating an NA column for nonmatching columns bw dfs A and B
-  arrange(cohort, start_date, as.numeric(box)) %>% 
-  distinct() %>%  # needed bc otherwise subject0 will "double count" the "reference" rows
-  mutate(exp = gsub("-.*", "", exp),
-         exp = replace(exp, as.numeric(str_extract(cohort, "\\d+")) > 6&grepl("SHOCK", exp), "SHOCK03")) # for all cohorts later than cohort 6, they only use one shock value, but we can change it to shock03 so that we can have uniformity 
-## XX Note: remove all but SHOCK03 and Pre Shock - Olivier (from meeting 1/24)
-
-
-# waiting on their response for these cases (trying to assign labanimalid [MF]\\d{4,})
-## date_time_subject_df %>% arrange(cohort, as.numeric(box)) %>% dplyr::filter(!grepl("[MF]\\d{1,3}(?!\\d+?)", labanimalid, perl = T )|lead(!grepl("[MF]\\d{1,3}(?!\\d+?)", labanimalid, perl = T ))|lag(!grepl("[MF]\\d{1,3}(?!\\d+?)", labanimalid, perl = T )))
-## OR  date_time_subject_df %>% dplyr::filter(grepl("[MF]\\d{4,}", labanimalid, perl = T ))
-
-## date_time_subject_df_comp %>% dplyr::filter(labanimalid == "F16", exp == "SHA06", box %in% c("8", "16"))
+date_time_subject_no0 %>% group_by(labanimalid, exp, cohort) %>% add_count() %>% subset(n!=1) %>% arrange(cohort, labanimalid, exp)
+date_time_subject_no0 %>% dplyr::filter(labanimalid == "F301", exp == "LGA19")
 
 ## PICK BACK UP 
 # before merging with excel dates
