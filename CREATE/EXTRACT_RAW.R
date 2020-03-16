@@ -10,7 +10,7 @@ setwd("~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS")
 process_subjects_new <- function(x){
   
   read_subjects_new <- function(x){
-    subjects <- fread(paste0("awk '/Subject/{print NR \"_\" $2}' ", "'", x, "'"),fill = T,header=F)
+    subjects <- fread(paste0("awk '/Subject/{print NR \"_\" $2}' ", " '", x, "'"),fill = T,header=F)
     subjects$filename <- x
     return(subjects)
   }
@@ -94,6 +94,54 @@ read_fread_old <- function(x, varname){
 }
 
 
+############# (consider adding this code form cocaine to extract all three -- active, inactive, and rewards)
+read_fread_new <- function(x, varname){
+  
+  fread_statements <- data.frame(varname = c("leftresponses", "rightresponses", "rewards", "lefttimestamps", "righttimestamps", "rewardstimestamps"),
+                                 statement = c("awk '/L:/{flag=1;next}/R:/{flag=0}flag' ",
+                                               "awk '/R:/{flag=1;next}/U:/{flag=0}flag' ",
+                                               "awk '/W:/{flag=1;next}/Y:/{flag=0}flag' ", 
+                                               "awk '/U:/{flag=1;next}/V:/{flag=0}flag' ",
+                                               "awk '/Y:/{flag=1;next}/^$/{flag=0}flag' ",
+                                               "awk '/V:/{flag=1;next}/W:/{flag=0}flag' "))
+  statement <- fread_statements[which(fread_statements$varname == varname),]$statement
+  rawdata <- fread(paste0(statement, "'", x, "'"), fill = T)
+  data_indices <- grep("^0:$", rawdata$V1)
+  split_data <- split(rawdata, cumsum(1:nrow(rawdata) %in% data_indices))
+  
+  keepzeroes <- c("leftresponses", "rightresponses", "rewards") # preserve bin sequences
+  
+  if(varname %in% keepzeroes){
+    processeddata <- lapply(split_data, function(x){
+      indexremoved <- x[,-1]
+      processeddata_df <- data.frame(counts = as.vector(t(data.matrix(indexremoved)))) %>% # transpose to get by row
+        mutate(bin = ifelse(row_number() == 1, "total", as.character(row_number() - 1)))
+      return(processeddata_df)
+    })
+  }
+  else{
+    processeddata <- lapply(split_data, function(x){
+      indexremoved <- x[,-1]
+      nonzerorows <- indexremoved[rowSums(indexremoved) > 0, ] # remove excessively trailing 0's 
+      processeddata_df <- data.frame(timestamps = as.vector(t(data.matrix(nonzerorows)))) # transpose to get by row
+      if(any(processeddata_df$timestamps > 7500)){
+        processeddata_df %<>% 
+          mutate(bin = cut(timestamps, breaks=seq(from = 0, length.out = 73, by = 300), right = T, labels = seq(from = 1, to = 72, by =1))) %<>% 
+          dplyr::filter(timestamps != 0)
+      }
+      else{
+        processeddata_df %<>% 
+          mutate(bin = cut(timestamps, breaks=seq(from = 0, length.out = 25, by = 300), right = T, labels = seq(from = 1, to = 24, by =1))) %<>% 
+          dplyr::filter(timestamps != 0)
+      }
+      return(processeddata_df)
+    }) 
+  }
+  
+  
+  return(processeddata)
+}
+
 
 
 
@@ -127,7 +175,8 @@ date_time_subject <- data.frame(labanimalid = gsub(".*Subject: ", "", grep("Subj
   mutate(exp = mgsub::mgsub(exp, c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4)))) %>% 
   mutate(start_datetime = lubridate::mdy_hms(paste(format(as.Date(start_date, "%m/%d/%y"), "%m/%d/20%y"), start_time)),
          end_datetime = lubridate::mdy_hms(paste(format(as.Date(end_date, "%m/%d/%y"), "%m/%d/20%y"), end_time)),
-         experiment_duration = difftime(end_datetime, start_datetime, units = "mins") %>% as.numeric() %>% round(0))
+         experiment_duration = difftime(end_datetime, start_datetime, units = "mins") %>% as.numeric() %>% round(0)) %>% 
+  select(-matches("_(date|time){1}$"))
          
   # mutate(labanimalid = replace(labanimalid, labanimalid == "M7678", "M768"),
   #        labanimalid = replace(labanimalid, labanimalid == "X", "F507"),
@@ -224,6 +273,10 @@ date_time_subject_df_comp <- left_join(date_time_subject_no0, olivieroxy_excel_d
 ################################
 ########## SHA #################
 ################################
+
+
+
+
 
 ###### NEW FILES ##############
 # label data with... 
