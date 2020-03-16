@@ -178,11 +178,6 @@ date_time_subject <- data.frame(labanimalid = gsub(".*Subject: ", "", grep("Subj
          experiment_duration = difftime(end_datetime, start_datetime, units = "mins") %>% as.numeric() %>% round(0)) %>% 
   select(-matches("_(date|time){1}$"))
          
-  # mutate(labanimalid = replace(labanimalid, labanimalid == "M7678", "M768"),
-  #        labanimalid = replace(labanimalid, labanimalid == "X", "F507"),
-  #        labanimalid = replace(labanimalid, labanimalid == "717", "F717")) %>% # verified by box
-  # mutate(labanimalid = if_else(grepl("^C0", labanimalid), str_match(labanimalid,"[FM]\\d{1,3}" %>% unlist() %>% as.character()), labanimalid %>% as.character()))
-
 ## problems in being too lax in accepting all forms of subjects 
 # gsub(".*Subject: ", "", grep("Subject", read_date_time_subject, value = T)) %>% toupper %>% table() # before processing
 
@@ -198,8 +193,8 @@ date_time_subject_mut <- date_time_subject %>% subset(labanimalid%in% dupeids$la
                                      gsub("M", "F", labanimalid), labanimalid))) %>% 
   select(-n) %>% as.data.frame() %>% 
   left_join(date_time_subject, ., 
-            by = c("cohort", "exp", "start_date", "end_date", "box", "start_time", "end_time", "filename", "directory", "start_datetime", "end_datetime", "experiment_duration")) %>% # gets the correct labanimals for reference to fill in the missing animals
-  mutate(numbers = coalesce(labanimalid.x, labanimalid.y)) %>% # not yet labanimalid bc there are unassigned values 
+            by = c("cohort", "exp", "box", "start_datetime", "end_datetime", "filename", "directory", "experiment_duration")) %>% # gets the correct labanimals for reference to fill in the missing animals
+  mutate(numbers = coalesce(labanimalid.y, labanimalid.x)) %>% # not yet labanimalid bc there are unassigned values 
   select(-matches("[.]")) 
 # using reference id's to assign unlabelled sexes
 date_time_subject_mut <- date_time_subject_mut %>% 
@@ -214,6 +209,7 @@ date_time_subject_mut <- date_time_subject_mut %>%
 # check date_time_subject_mut$labanimalid %>% table()
 
 # fix subject 0
+# by using metadata, box and room to assign
 date_time_subject_no0 <- date_time_subject_mut %>% mutate_all(as.character) %>% left_join(., date_time_subject_mut %>% split(., .$cohort) %>% lapply(., function(x){
   x <- x %>% 
     mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA)) %>% 
@@ -221,15 +217,18 @@ date_time_subject_no0 <- date_time_subject_mut %>% mutate_all(as.character) %>% 
     dplyr::filter(!grepl("[MF]", labanimalid)|lead(!grepl("[MF]", labanimalid))|lag(!grepl("[MF]", labanimalid))) %>% 
     mutate(dbcomment = ifelse(!grepl("[MF]", labanimalid), "box info used to fill labanimalid", NA)) %>% 
     group_by(box) %>% mutate(labanimalid = labanimalid[grepl("[MF]", labanimalid)][1]) %>%  # spot checking for deaths
-    arrange(labanimalid, start_date) 
+    arrange(labanimalid, start_datetime) 
   return(x) # remove labanimalid0 or blank subset from original df and then insert the corrected ones (keep the dbcomment variable)
-}) %>% rbindlist(.) %>% mutate_all(as.character) , by = c("cohort", "exp", "start_date", "end_date", "box", "start_time", "end_time", "filename", "directory", "start_datetime", "end_datetime", "experiment_duration")) %>% 
+}) %>% rbindlist(.) %>% mutate_all(as.character), by = c("cohort", "exp", "box", "filename", "directory", "start_datetime", "end_datetime", "experiment_duration")) %>% 
   mutate(labanimalid = coalesce(labanimalid.y, labanimalid.x)) %>%
-  select(-matches("[.]")) %>% 
-  select(labanimalid, everything()) %>% 
-  mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA),
-         start_date = as.character(lubridate::mdy(start_date)),
-         end_date =  as.character(lubridate::mdy(end_date)))
+  select(-matches("[.]|room")) %>% 
+  select(labanimalid, everything()) 
+  
+
+# %>% 
+#   mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA),
+#          start_datetime = as.character(lubridate::mdy_hms(start_datetime)),
+#          end_datetime =  as.character(lubridate::mdy_hms(end_datetime)))
 
 
 # date_time_subject_mut[str_detect(date_time_subject_mut$labanimalid, "^(M|F)\\d{4}", negate = F),]
