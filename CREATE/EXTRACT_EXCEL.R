@@ -5,7 +5,7 @@ setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01/GWAS Self Administration Data/O
 cohortfiles <- list.files(pattern = "*.xlsx")
 # 4 excels: 1,4 are both in the same format, 3 is similar but has comments in the names header, but 5 is in the format from the cocaine exp
 olivieroxy_excel <- list("C01"=selfadmin_rewards_cohort1,
-                         "C02"=selfadmin_rewards_cohort3,
+                         "C03"=selfadmin_rewards_cohort3,
                          "C04"=selfadmin_rewards_cohort4,
                          "C05"=selfadmin_rewards_cohort5) %>% rbindlist(idcol = "cohort", fill = T) %>% 
   clean_names() %>% # use this fxn to return df, use make_clean_names on vector 

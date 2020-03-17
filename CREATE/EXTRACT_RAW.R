@@ -251,7 +251,8 @@ date_time_subject_df_comp <- left_join(date_time_subject_no0, olivieroxy_excel_d
     grepl("SHA", exp) & experiment_duration > 175 & grepl(excel_date, start_datetime) & grepl("C01", cohort)~ "yes",
     grepl("LGA", exp) & experiment_duration > 715 & grepl(excel_date, start_datetime) ~ "yes",
     grepl("PR", exp) & experiment_duration > 55 & grepl(excel_date, start_datetime) ~ "yes",
-    TRUE ~ "no")  ) ## Using start date ## Got these numbers from Lauren on 3/16/2020
+    TRUE ~ "no")  ) %>% ## Using start date ## Got these numbers from Lauren on 3/16/2020
+  ungroup()
 ## date_time_subject_df_comp %>% subset(valid == "no") %>% dplyr::filter(map2_lgl(excel_date, start_datetime, str_detect)) checking row by row if the comparison is working (using tidyverse)
 
 
