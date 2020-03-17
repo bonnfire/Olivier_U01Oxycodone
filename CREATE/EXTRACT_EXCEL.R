@@ -17,7 +17,8 @@ olivieroxy_excel_dateslong <- olivieroxy_excel %>% select(matches("date|cohort")
   select(-date) %>% 
   mutate(exp = toupper(exp),
          value = as.character(lubridate::ymd(value))) %>% 
-  rename("excel_date" = "value")
+  rename("excel_date" = "value") %>% 
+  subset(!is.na(excel_date))
 
 
 # run this line after running all sections after cohort1
