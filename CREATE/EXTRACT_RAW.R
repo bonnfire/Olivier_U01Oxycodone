@@ -209,7 +209,7 @@ date_time_subject_mut <- date_time_subject_mut %>%
 # check date_time_subject_mut$labanimalid %>% table()
 
 # fix subject 0
-# by using metadata, box and room to assign
+# by using metadata, box and room to assign and merge back into the original df
 date_time_subject_no0 <- date_time_subject_mut %>% mutate_all(as.character) %>% left_join(., date_time_subject_mut %>% split(., .$cohort) %>% lapply(., function(x){
   x <- x %>% 
     mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA)) %>% 
@@ -217,7 +217,7 @@ date_time_subject_no0 <- date_time_subject_mut %>% mutate_all(as.character) %>% 
     dplyr::filter(!grepl("[MF]", labanimalid)|lead(!grepl("[MF]", labanimalid))|lag(!grepl("[MF]", labanimalid))) %>% 
     mutate(dbcomment = ifelse(!grepl("[MF]", labanimalid), "box info used to fill labanimalid", NA)) %>% 
     group_by(box) %>% mutate(labanimalid = labanimalid[grepl("[MF]", labanimalid)][1]) %>%  # spot checking for deaths
-    arrange(labanimalid, start_datetime) 
+    ungroup()
   return(x) # remove labanimalid0 or blank subset from original df and then insert the corrected ones (keep the dbcomment variable)
 }) %>% rbindlist(.) %>% mutate_all(as.character), by = c("cohort", "exp", "box", "filename", "directory", "start_datetime", "end_datetime", "experiment_duration")) %>% 
   mutate(labanimalid = coalesce(labanimalid.y, labanimalid.x)) %>%
@@ -225,35 +225,42 @@ date_time_subject_no0 <- date_time_subject_mut %>% mutate_all(as.character) %>% 
   select(labanimalid, everything()) 
   
 
-# %>% 
-#   mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA),
-#          start_datetime = as.character(lubridate::mdy_hms(start_datetime)),
-#          end_datetime =  as.character(lubridate::mdy_hms(end_datetime)))
-
-
-# date_time_subject_mut[str_detect(date_time_subject_mut$labanimalid, "^(M|F)\\d{4}", negate = F),]
-date_time_subject_mut$labanimalid %>% table()
+# date_time_subject_no0[str_detect(date_time_subject_no0$labanimalid, "^(M|F)\\d{4}", negate = F),]
+date_time_subject_no0$labanimalid %>% table()
 
 # replace rbindlist... with openxlsx::write.xlsx(., "labanimalid_assign_bybox.xlsx") to create the excel sheets that I sent to their lab 
 # subject0 %>% openxlsx::write.xlsx(., "labanimalid_assign_bybox.xlsx")
 
-date_time_subject_no0 %>% group_by(labanimalid, exp, cohort) %>% add_count() %>% subset(n!=1) %>% arrange(cohort, labanimalid, exp)
-# example for why we need the excel sheet dates to confirm the correct labelling: date_time_subject_no0 %>% dplyr::filter(labanimalid == "F301", exp == "LGA19")
+# date_time_subject_no0 %>% group_by(labanimalid, exp, cohort) %>% add_count() %>% subset(n!=1) %>% arrange(cohort, labanimalid, exp)
+# example for why we need the excel sheet dates to confirm the correct labelling: date_time_subject_no0 %>% dplyr::filter(labanimalid == "xx", exp == "xx")
 
-# before merging with excel dates
-# include more dbcomments 
-# fix strange filenames -2, -3
 
 # include correct dates as another check (dates extracted from EXTRACT_EXCEL.R olivieroxy_excel_dateslong object)
+# use this and their team to decide on what the cutoff points should be
+date_time_subject_no0 %>% 
+  mutate(exp = str_extract(exp, "LGA|SHA|PR"),
+         experiment_duration = as.numeric(experiment_duration)) %>% 
+  ggplot(aes(x = experiment_duration)) + geom_histogram(stat = "count") + facet_grid(rows = vars(exp))
+
+
 date_time_subject_df_comp <- left_join(date_time_subject_no0, olivieroxy_excel_dateslong, by = c("cohort", "exp")) %>%
+  mutate(experiment_duration = as.numeric(experiment_duration)) %>% 
+  rowwise() %>% 
   mutate(valid = case_when(
-    grepl("SHOCK", exp) & experiment_duration > 58 & excel_date == start_date ~ "yes",
-    grepl("SHA", exp) & experiment_duration > 115 & excel_date == start_date~ "yes",
-    grepl("LGA", exp) & experiment_duration > 355 & excel_date == start_date~ "yes",
-    grepl("PR", exp) & experiment_duration > 60 & excel_date == start_date~ "yes",
-    TRUE ~ "no")  ) ## XX check if we use start or end date; fix the mislabelled files XXXX PICK UP HERE 
+    grepl("SHA", exp) & experiment_duration > 115 & grepl(excel_date, start_datetime) & !grepl("C01", cohort) ~ "yes",
+    grepl("SHA", exp) & experiment_duration > 175 & grepl(excel_date, start_datetime) & grepl("C01", cohort)~ "yes",
+    grepl("LGA", exp) & experiment_duration > 715 & grepl(excel_date, start_datetime) ~ "yes",
+    grepl("PR", exp) & experiment_duration > 55 & grepl(excel_date, start_datetime) ~ "yes",
+    TRUE ~ "no")  ) ## Using start date; fix the mislabelled files XXXX PICK UP HERE 
 
+## for sha
+## cohort 1 -- cutoff is 175
+## cohort 3 -- cutoff is 115
 
+# %>% 
+#   mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA),
+#          start_datetime = as.character(lubridate::mdy_hms(start_datetime)),
+#          end_datetime =  as.character(lubridate::mdy_hms(end_datetime)))
 
 
 

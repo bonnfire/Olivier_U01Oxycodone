@@ -1,4 +1,4 @@
-setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01")
+setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01/GWAS Self Administration Data/Oxy Data")
 ## temporarily using this one: 
 
 
@@ -28,20 +28,11 @@ cohortinfofiles <- list.files(pattern = "*.xlsx")
 
 
 
-# olivierfiles_oxy <- function(filename){
-#   
-#   
-#   setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01/GWAS Self Administration Data/Oxy Data")
-#   options(scipen = 100) # prevent sci notation
-#   u01.importxlsx <- function(xlname){
-#     df <- lapply(excel_sheets(path = xlname), read_excel, path = xlname)
-#     names(df) <- excel_sheets(xlname)
-#     return(df)
-#   }
-#   
-# ### put back into fxn once one works for one file
-#   
-#   }
+u01.importxlsx <- function(xlname){
+  df <- lapply(excel_sheets(path = xlname), read_excel, path = xlnameF)
+  names(df) <- excel_sheets(xlname)
+  return(df)
+}
 
 ########################
 # COHORT 1 

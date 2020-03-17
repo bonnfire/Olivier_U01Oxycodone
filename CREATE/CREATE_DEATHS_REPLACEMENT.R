@@ -1,15 +1,15 @@
 ### EXTRACT PROBLEMATIC RAT (Excel provided by the Olivier lab)
 
 
-### COCAINE ### 
+### OXYCODONE ### 
 
 
 setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01/Rat Information")
 
 
 
-ratinfo_list_deaths <- u01.importxlsx("Rat Information - All.xlsx")[[3]]
-ratinfo_list_replacements <- u01.importxlsx("Rat Information - All.xlsx")[[4]]
+ratinfo_list_deaths <- u01.importxlsx("Rat Information - All.xlsx")[[3]] # `Oxycodone - Deaths and Fails`
+ratinfo_list_replacements <- u01.importxlsx("Rat Information - All.xlsx")[[4]] # `Oxy - Rat Replacements`
 
 ratinfo_list_deaths_processed <- ratinfo_list_deaths %>% 
   clean_names() %>% 
