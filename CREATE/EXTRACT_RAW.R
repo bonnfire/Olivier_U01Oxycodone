@@ -243,17 +243,36 @@ date_time_subject_no0 %>%
   ggplot(aes(x = experiment_duration)) + geom_histogram(stat = "count") + facet_grid(rows = vars(exp))
 
 
-date_time_subject_df_comp <- left_join(date_time_subject_no0, olivieroxy_excel_dateslong, by = c("cohort", "exp")) %>%
-  mutate(experiment_duration = as.numeric(experiment_duration)) %>% 
-  rowwise() %>% 
-  mutate(valid = case_when(
-    grepl("SHA", exp) & experiment_duration > 115 & grepl(excel_date, start_datetime) & !grepl("C01", cohort) ~ "yes",
-    grepl("SHA", exp) & experiment_duration > 175 & grepl(excel_date, start_datetime) & grepl("C01", cohort)~ "yes",
-    grepl("LGA", exp) & experiment_duration > 715 & grepl(excel_date, start_datetime) ~ "yes",
-    grepl("PR", exp) & experiment_duration > 55 & grepl(excel_date, start_datetime) ~ "yes",
-    TRUE ~ "no")  ) %>% ## Using start date ## Got these numbers from Lauren on 3/16/2020
+date_time_subject_df_comp <-
+  left_join(date_time_subject_no0,
+            olivieroxy_excel_dateslong,
+            by = c("cohort", "exp")) %>%
+  mutate(experiment_duration = as.numeric(experiment_duration)) %>%
+  rowwise() %>%
+  mutate(
+    valid = case_when(
+      grepl("SHA", exp) &
+        experiment_duration > 115 &
+        grepl(excel_date, end_datetime) & !grepl("C01", cohort) ~ "yes",
+      grepl("SHA", exp) &
+        experiment_duration > 175 &
+        grepl(excel_date, end_datetime) & grepl("C01", cohort) ~ "yes",
+      grepl("LGA", exp) &
+        experiment_duration > 715 &
+        grepl(excel_date, end_datetime) & grepl("C0(1|3|4)", cohort) ~ "yes",
+      grepl("LGA", exp) &
+        experiment_duration > 715 & 
+        grepl(excel_date, start_datetime) & !grepl("C0(1|3|4)", cohort) ~ "yes", #So the most recent cohorts (5-6) have been the start date
+      grepl("PR", exp) &
+        experiment_duration > 55 &
+        grepl(excel_date, end_datetime) ~ "yes",
+      TRUE ~ "no"
+    )
+  ) %>% ## Using start date ## Got these numbers from Lauren on 3/16/2020
   ungroup()
 ## date_time_subject_df_comp %>% subset(valid == "no") %>% dplyr::filter(map2_lgl(excel_date, start_datetime, str_detect)) checking row by row if the comparison is working (using tidyverse)
+date_time_subject_df_comp %>% subset(valid == "no") %>% select(cohort, exp) %>% table()
+date_time_subject_df_comp %>% add_count(labanimalid, exp) %>% subset(valid == "no"&n ==1) %>% select(labanimalid, exp) %>% table()
 
 
 # %>% 
