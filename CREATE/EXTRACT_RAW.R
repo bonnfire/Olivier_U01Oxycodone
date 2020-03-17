@@ -251,11 +251,9 @@ date_time_subject_df_comp <- left_join(date_time_subject_no0, olivieroxy_excel_d
     grepl("SHA", exp) & experiment_duration > 175 & grepl(excel_date, start_datetime) & grepl("C01", cohort)~ "yes",
     grepl("LGA", exp) & experiment_duration > 715 & grepl(excel_date, start_datetime) ~ "yes",
     grepl("PR", exp) & experiment_duration > 55 & grepl(excel_date, start_datetime) ~ "yes",
-    TRUE ~ "no")  ) ## Using start date; fix the mislabelled files XXXX PICK UP HERE 
+    TRUE ~ "no")  ) ## Using start date ## Got these numbers from Lauren on 3/16/2020
+## date_time_subject_df_comp %>% subset(valid == "no") %>% dplyr::filter(map2_lgl(excel_date, start_datetime, str_detect)) checking row by row if the comparison is working (using tidyverse)
 
-## for sha
-## cohort 1 -- cutoff is 175
-## cohort 3 -- cutoff is 115
 
 # %>% 
 #   mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA),
