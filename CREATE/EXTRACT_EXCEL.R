@@ -74,7 +74,7 @@ selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grep
 selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement") %>% dplyr::filter(measurement != "COMMENT")
 selfadmin_rewards_cohort1 <- selfadmin_df %>% dplyr::filter(measurement == "ACTIVE")
 
-
+  
 ########################
 # COHORT 3
 ########################

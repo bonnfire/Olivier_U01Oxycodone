@@ -21,17 +21,26 @@ process_subjects_new <- function(x){
   }
   date_time <- lapply(x, read_meta_subjects_new) %>% rbindlist() 
   
+  read_meta_box_new <- function(x){
+    box_new <- fread(paste0("awk '/Box/{print $2}' ", "'", x, "'"), fill = T, header=F)
+    return(box_new)
+  }
+  box_new <- lapply(x, read_meta_box_new) %>% rbindlist() %>% rename("box" = "V1")
+  
   names_sha_append <- lapply(x, read_subjects_new) %>% rbindlist() %>% rename("labanimalid"="V1") %>%
-    cbind(., date_time) %>% 
+    cbind(., date_time) %>%
+    cbind(., box_new) %>%
     mutate(labanimalid = paste0( str_extract(labanimalid, "\\d+"), "_", 
                                 str_extract(toupper(labanimalid), "[MF]\\d{1,3}"), "_", # labanimalid
                                 str_extract(filename, "C\\d+"), "_", # cohort
                                 sub('.*HSOXY', '', toupper(filename)), "_", # exp
                                 sub(".*/.*/.*/", '', filename), "_",
-                                V1)) %>% # subject id, cohort, experiment, file/location perhaps
-  select(-V1)
+                                V1, "_",
+                                box)) %>% # subject id, cohort, experiment, file/location perhaps
+  select(-c(V1, box))
   
   return(names_sha_append)
+  # return(box_new)
   
 }
 
