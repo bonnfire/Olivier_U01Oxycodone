@@ -512,12 +512,15 @@ pr_rewards_new <- lapply(pr_new_files, readrewards_pr) %>% rbindlist() %>% separ
   bind_cols(pr_subjects_new) %>%
   separate(
     labanimalid,
-    into = c("labanimalid", "cohort", "exp", "filename", "date", "time"),
+    into = c("labanimalid", "cohort", "exp", "filename", "date", "time", "box"),
     sep = "_"
   ) %>% mutate(
     date = lubridate::mdy(date),
     time = chron::chron(times = time)
   ) 
+pr_rewards_new <- left_join(., pr_rewards_new %>% subset(!grepl("M|F", labanimalid)) %>% 
+                              arrange() %>% 
+                              group_by, by = c("cohort", "filename", "date", "time"))
 # qc with...
 pr_rewards_new %>% count(labanimalid, exp, cohort) %>% subset(n!=1)
 pr_rewards_new %>% distinct() %>% add_count(labanimalid, exp, cohort) %>% subset(n!=1)
