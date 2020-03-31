@@ -21,23 +21,15 @@ process_subjects_new <- function(x){
   }
   date_time <- lapply(x, read_meta_subjects_new) %>% rbindlist() 
   
-  read_meta_box_new <- function(x){
-    box_new <- fread(paste0("awk '/Box/{print $2}' ", "'", x, "'"), fill = T, header=F)
-    return(box_new)
-  }
-  box_new <- lapply(x, read_meta_box_new) %>% rbindlist() %>% rename("box" = "V1")
-  
   names_sha_append <- lapply(x, read_subjects_new) %>% rbindlist() %>% rename("labanimalid"="V1") %>%
     cbind(., date_time) %>%
-    cbind(., box_new) %>%
     mutate(labanimalid = paste0( str_extract(labanimalid, "\\d+"), "_", 
                                 str_extract(toupper(labanimalid), "[MF]\\d{1,3}"), "_", # labanimalid
                                 str_extract(filename, "C\\d+"), "_", # cohort
                                 sub('.*HSOXY', '', toupper(filename)), "_", # exp
                                 sub(".*/.*/.*/", '', filename), "_",
-                                V1, "_",
-                                box)) %>% # subject id, cohort, experiment, file/location perhaps
-  select(-c(V1, box))
+                                V1)) %>% # subject id, cohort, experiment, file/location perhaps
+  select(-c(V1))
   
   return(names_sha_append)
   # return(box_new)
@@ -258,27 +250,13 @@ date_time_subject_df_comp <-
             by = c("cohort", "exp")) %>%
   mutate(experiment_duration = as.numeric(experiment_duration)) %>%
   rowwise() %>%
-  mutate(
-    valid = case_when(
-      grepl("SHA", exp) &
-        experiment_duration > 115 &
-        grepl(excel_date, end_datetime) & !grepl("C01", cohort) ~ "yes",
-      grepl("SHA", exp) &
-        experiment_duration > 175 &
-        grepl(excel_date, end_datetime) & grepl("C01", cohort) ~ "yes",
-      grepl("LGA", exp) &
-        experiment_duration > 715 &
-        grepl(excel_date, end_datetime) & grepl("C0(1|3|4)", cohort) ~ "yes",
-      grepl("LGA", exp) &
-        experiment_duration > 715 & 
-        grepl(excel_date, start_datetime) & !grepl("C0(1|3|4)", cohort) ~ "yes", #So the most recent cohorts (5-6) have been the start date
-      grepl("PR", exp) &
-        experiment_duration > 55 &
-        grepl(excel_date, end_datetime) ~ "yes",
-      TRUE ~ "no"
-    )
-  ) %>% ## Using start date ## Got these numbers from Lauren on 3/16/2020
-  ungroup()
+  mutate(valid = ifelse(grepl("SHA", exp) & experiment_duration > 115 & stringr::str_detect(end_datetime, excel_date) & !grepl("C01", cohort), "yes", 
+    ifelse(grepl("SHA", exp) & stringr::str_detect(end_datetime, excel_date) & experiment_duration > 175 & grepl("C01", cohort), "yes",
+           # ifelse(grepl("LGA", exp) & stringr::str_detect(end_datetime, excel_date) & experiment_duration > 715 & !grepl("C0(1|3|4)", cohort), "yes", #later cohorts use end date
+                  ifelse(grepl("LGA", exp) & stringr::str_detect(start_datetime, excel_date) & experiment_duration > 715 & grepl("C0(1|3|4|5)", cohort), "yes", # earlier cohorts use start date
+                         ifelse(grepl("PR", exp) & stringr::str_detect(end_datetime, excel_date) & experiment_duration > 55 ,"yes", 
+                                "no"))))) %>% ## Using start date ## Got these numbers from Lauren on 3/16/2020
+  ungroup() 
 ## date_time_subject_df_comp %>% subset(valid == "no") %>% dplyr::filter(map2_lgl(excel_date, start_datetime, str_detect)) checking row by row if the comparison is working (using tidyverse)
 date_time_subject_df_comp %>% subset(valid == "no") %>% select(cohort, exp) %>% table()
 date_time_subject_df_comp %>% add_count(labanimalid, exp) %>% subset(valid == "no"&n ==1) %>% select(labanimalid, exp) %>% table()
@@ -502,6 +480,8 @@ pr_new_files <- grep(list.files(path = ".", recursive = T, full.names = T), patt
 # label data with...
 pr_subjects_new <- process_subjects_new(pr_new_files) %>% separate(labanimalid, c("row", "labanimalid"), sep = "_", extra = "merge") %>%
   arrange(filename, as.numeric(row)) %>% select(-c(row, filename)) # 1037
+
+
 # extract data with diff function from `read_rewards_new` for sha
 readrewards_pr <- function(x){
   rewards <- fread(paste0("awk '/B:/{print NR \"_\" $2}' ", "'", x, "'"), header = F, fill = T)
@@ -512,15 +492,17 @@ pr_rewards_new <- lapply(pr_new_files, readrewards_pr) %>% rbindlist() %>% separ
   bind_cols(pr_subjects_new) %>%
   separate(
     labanimalid,
-    into = c("labanimalid", "cohort", "exp", "filename", "date", "time", "box"),
+    into = c("labanimalid", "cohort", "exp", "filename", "date", "time"),
     sep = "_"
   ) %>% mutate(
-    date = lubridate::mdy(date),
-    time = chron::chron(times = time)
+    date = lubridate::mdy(date) %>% as.character,
+    time = chron::chron(times = time) %>% as.character
   ) 
-pr_rewards_new <- left_join(., pr_rewards_new %>% subset(!grepl("M|F", labanimalid)) %>% 
-                              arrange() %>% 
-                              group_by, by = c("cohort", "filename", "date", "time"))
+pr_rewards_new_join <- left_join(pr_rewards_new, date_time_subject_df_comp, by = c("cohort", "exp", "date" = "start_date", "time" = "start_time", "filename")) %>% 
+  mutate(labanimalid = coalesce(labanimalid.y, labanimalid.x))
+
+
+
 # qc with...
 pr_rewards_new %>% count(labanimalid, exp, cohort) %>% subset(n!=1)
 pr_rewards_new %>% distinct() %>% add_count(labanimalid, exp, cohort) %>% subset(n!=1)
