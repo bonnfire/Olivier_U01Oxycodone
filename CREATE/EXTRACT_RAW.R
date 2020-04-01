@@ -217,7 +217,7 @@ date_time_subject_no0 <- date_time_subject_mut %>% mutate_all(as.character) %>% 
     arrange(room, as.numeric(box)) %>% 
     dplyr::filter(!grepl("[MF]", labanimalid)|lead(!grepl("[MF]", labanimalid))|lag(!grepl("[MF]", labanimalid))) %>% 
     mutate(dbcomment = ifelse(!grepl("[MF]", labanimalid), "box info used to fill labanimalid", NA)) %>% 
-    group_by(box) %>% mutate(labanimalid = labanimalid[grepl("[MF]", labanimalid)][1]) %>%  # spot checking for deaths
+    group_by(room, box) %>% mutate(labanimalid = labanimalid[grepl("[MF]", labanimalid)][1]) %>%  # spot checking for deaths
     ungroup()
   return(x) # remove labanimalid0 or blank subset from original df and then insert the corrected ones (keep the dbcomment variable)
 }) %>% rbindlist(.) %>% mutate_all(as.character), by = c("cohort", "exp", "box", "filename", "directory", "start_datetime", "end_datetime", "experiment_duration")) %>% 
@@ -498,8 +498,10 @@ pr_rewards_new <- lapply(pr_new_files, readrewards_pr) %>% rbindlist() %>% separ
     date = lubridate::mdy(date) %>% as.character,
     time = chron::chron(times = time) %>% as.character
   ) 
-pr_rewards_new_join <- left_join(pr_rewards_new, date_time_subject_df_comp, by = c("cohort", "exp", "date" = "start_date", "time" = "start_time", "filename")) %>% 
-  mutate(labanimalid = coalesce(labanimalid.y, labanimalid.x))
+pr_rewards_new_join <- left_join(pr_rewards_new, date_time_subject_df_comp, by = c("cohort", "exp", "filename")) %>% 
+  mutate(labanimalid = coalesce(labanimalid.y, labanimalid.x)) %>% 
+  select(-c("labanimalid.x", "labanimalid.y")) %>% 
+  mutate(rewards = replace(rewards, cohort == "C04"&exp == "PR02", NA)) # "it was noted in the lab notebook that this data did not record properly, even though it was extracted from the computers; But Giordano fixed this issue for the cohorts after C04" - Lani (3/31)
 
 
 
@@ -543,8 +545,9 @@ pr_rewards_old <- lapply(pr_old_files, read_fread_old, "rewards") %>% rbindlist(
 #   dplyr::filter(valid == "valid") # no need for distinct() bc it is not an issue here
 
 # deal with the missing subjects...
+pr_rewards_old %>% subset(!grepl("M|F(\\d){3}", labanimalid)) %>% select(labanimalid) %>% table()
 
-## case: deal with mislabelled subjects?
+## case: deal with mislabelled subjects? (each id should be associated with one exp)
 pr_rewards_old %>% add_count(labanimalid, cohort,exp) %>% subset(n != 1)
 # pr_rewards_old <- pr_rewards_old %>% 
 #   mutate(labanimalid = replace(labanimalid, box == "2"&filename=="./C01/Old/PR/K3C01HSPR02-20170905.txt", "M21"), 
