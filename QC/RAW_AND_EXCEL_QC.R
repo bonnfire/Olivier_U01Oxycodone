@@ -3,14 +3,18 @@
 ## RAW
 # NEW and OLD and all exps combine 
 rewards <- rbindlist(
-  list(
+  lapply(list(
     "new_sha" = sha_rewards_new,
     "old_sha" = sha_rewards_old,
     "new_lga" = lga_rewards_new,
     "old_lga" = lga_rewards_old,
-    "new_pr" = pr_rewards_new,
+    "new_pr" = pr_rewards_new_join,
     "old_pr" = pr_rewards_old
-  ),
+  ), function(x){
+    x <- x %>% 
+      mutate_all(as.character)
+    return(x)
+  }),
   idcol = "directory",
   fill = T
 )
@@ -140,7 +144,8 @@ for (i in 1:(length(olivier_pr_measures)/2)){
     ggplot(aes_string(x = olivier_pr_measures[i], y = olivier_pr_measures[i+1])) + 
     geom_point(aes(color = directory)) + 
     labs(title = paste0("PR_", olivier_pr_measures[i], "_Raw_VS_Excel_U01_Olivier", "\n")) + 
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+    coord_cartesian(xlim = c(0, max(oxy_rawvsexcel$rewards_raw))) 
   
   # g_cohort <-  ggplot(rewards_pr_tograph, aes_string(x = olivier_pr_measures[i], y = olivier_pr_measures[i+3])) + 
   #   geom_point(aes(color = cohort_number)) + 

@@ -498,11 +498,13 @@ pr_rewards_new <- lapply(pr_new_files, readrewards_pr) %>% rbindlist() %>% separ
     date = lubridate::mdy(date) %>% as.character,
     time = chron::chron(times = time) %>% as.character
   ) 
-pr_rewards_new_join <- left_join(pr_rewards_new, date_time_subject_df_comp, by = c("cohort", "exp", "filename")) %>% 
+
+# %>% mutate(time = str_extract(end_datetime, "\\d{2}:\\d{2}:\\d{2}") for below code
+pr_rewards_new_join <- left_join(pr_rewards_new %>% mutate(start_datetime = paste(date, time)), date_time_subject_df_comp, by = c("cohort", "exp", "filename", "start_datetime")) %>% 
   mutate(labanimalid = coalesce(labanimalid.y, labanimalid.x)) %>% 
   select(-c("labanimalid.x", "labanimalid.y")) %>% 
-  mutate(rewards = replace(rewards, cohort == "C04"&exp == "PR02", NA)) # "it was noted in the lab notebook that this data did not record properly, even though it was extracted from the computers; But Giordano fixed this issue for the cohorts after C04" - Lani (3/31)
-
+  mutate(rewards = replace(rewards, cohort == "C04"&exp == "PR02", NA)) %>% # "it was noted in the lab notebook that this data did not record properly, even though it was extracted from the computers; But Giordano fixed this issue for the cohorts after C04" - Lani (3/31)
+  select(-c(setdiff(names(.), names(pr_rewards_new))))
 
 
 # qc with...
