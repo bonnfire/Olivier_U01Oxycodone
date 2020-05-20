@@ -145,7 +145,7 @@ for (i in 1:(length(olivier_pr_measures)/2)){
     geom_point(aes(color = directory)) + 
     labs(title = paste0("PR_", olivier_pr_measures[i], "_Raw_VS_Excel_U01_Olivier", "\n")) + 
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-    coord_cartesian(xlim = c(0, max(oxy_rawvsexcel$rewards_raw))) 
+    coord_cartesian(xlim = c(0, 300)) 
   
   # g_cohort <-  ggplot(rewards_pr_tograph, aes_string(x = olivier_pr_measures[i], y = olivier_pr_measures[i+3])) + 
   #   geom_point(aes(color = cohort_number)) + 

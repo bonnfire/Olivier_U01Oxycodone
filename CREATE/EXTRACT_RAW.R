@@ -21,15 +21,31 @@ process_subjects_new <- function(x){
   }
   date_time <- lapply(x, read_meta_subjects_new) %>% rbindlist() 
   
+  read_meta_box_new <- function(x) {
+    box_new <-
+      fread(
+        paste0("awk '/Box/{print $2}' ", "'", x, "'"),
+        fill = T,
+        header = F
+      )
+    return(box_new)
+  }
+  box_new <- lapply(x, read_meta_box_new) %>% rbindlist()
+  
+  
   names_sha_append <- lapply(x, read_subjects_new) %>% rbindlist() %>% rename("labanimalid"="V1") %>%
     cbind(., date_time) %>%
+    rename("date_time" = "V1") %>% 
+    cbind(., box_new) %>% 
+    rename("box" = "V1") %>%
     mutate(labanimalid = paste0( str_extract(labanimalid, "\\d+"), "_", 
                                 str_extract(toupper(labanimalid), "[MF]\\d{1,3}"), "_", # labanimalid
                                 str_extract(filename, "C\\d+"), "_", # cohort
                                 sub('.*HSOXY', '', toupper(filename)), "_", # exp
-                                sub(".*/.*/.*/", '', filename), "_",
-                                V1)) %>% # subject id, cohort, experiment, file/location perhaps
-  select(-c(V1))
+                                sub(".*/.*/.*/", '', filename),  "_",
+                                date_time, "_",
+                                box)) %>% # subject id, cohort, experiment, file/location perhaps
+    select(-c("date_time", "box"))
   
   return(names_sha_append)
   # return(box_new)
@@ -291,7 +307,7 @@ date_time_subject_df_comp %>% add_count(labanimalid, exp) %>% subset(valid == "n
 
 ###### NEW FILES ##############
 # label data with... 
-sha_new_files <- grep(grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*txt", inv = T, value = T), pattern = ".*SHA", value = T) # 72 files
+sha_new_files <- grep(grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*txt", inv = T, value = T), pattern = ".*SHA", value = T) # 104 files
 
 sha_subjects_new <- process_subjects_new(sha_new_files) %>% separate(labanimalid, c("row", "labanimalid"), sep = "_", extra = "merge") %>% 
   arrange(filename, as.numeric(row)) %>% select(-c(row, filename))
@@ -388,7 +404,7 @@ sha_rewards_old %<>% add_count(labanimalid, cohort,exp) %<>% dplyr::filter(n == 
 
 ###### NEW FILES ##############
 # label data with... 
-lga_new_files <- grep(grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*txt", inv = T, value = T), pattern = ".*LGA", value = T) # 274 files
+lga_new_files <- grep(grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*txt", inv = T, value = T), pattern = ".*LGA", value = T) # 370 files
 
 lga_subjects_new <- process_subjects_new(lga_new_files) %>% separate(labanimalid, c("row", "labanimalid"), sep = "_", extra = "merge") %>% 
   arrange(filename, as.numeric(row)) %>% select(-c(row, filename))
