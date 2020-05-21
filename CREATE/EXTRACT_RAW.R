@@ -442,6 +442,8 @@ lga_rewards_new_valid <- lga_rewards_new %>%
   select(-n)
 
 
+
+
 ## note 
 # C01 MED1110C01HSOXYLGA14 2018-08-31 LGA14 ## not verified by excel -- excel has 2018-09-01 for LGA14
 # C03 MED1110C03HSOXYLGA19 2019-03-05 LGA19 ## not verified by excel -- lga19 doesn't exist
