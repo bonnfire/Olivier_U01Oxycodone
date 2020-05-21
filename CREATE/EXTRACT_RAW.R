@@ -254,11 +254,19 @@ date_time_subject_no0$labanimalid %>% table()
 
 # include correct dates as another check (dates extracted from EXTRACT_EXCEL.R olivieroxy_excel_dateslong object)
 # use this and their team to decide on what the cutoff points should be
-date_time_subject_no0 %>% 
-  mutate(exp = str_extract(exp, "LGA|SHA|PR"),
-         experiment_duration = as.numeric(experiment_duration)) %>% 
-  ggplot(aes(x = experiment_duration)) + geom_histogram(stat = "count") + facet_grid(rows = vars(exp))
+# date_time_subject_no0 %>% 
+#   mutate(exp = str_extract(exp, "LGA|SHA|PR"),
+#          experiment_duration = as.numeric(experiment_duration)) %>% 
+#   ggplot(aes(x = experiment_duration)) + geom_histogram(stat = "count") + facet_grid(rows = vars(exp))
 
+
+## before making the date_time_subject_df_comp, fix the exps on some lines from date_time_subject_no0
+date_time_subject_no0 <- date_time_subject_no0 %>% 
+  mutate(start_date = as.Date(start_datetime) %>% as.character,
+         start_time = format(ymd_hms(start_datetime), "%H:%M:%S") %>% chron::chron(times = .) %>% as.character) %>% 
+  mutate(exp = replace(exp, filename == "MED1110C03HSOXYLGA17"&start_date=="2019-02-28", "LGA18"),
+       exp = replace(exp, grepl("BSB273[BCDE]C04HSOXYLGA15", filename)&start_date=="2019-07-26", "LGA16"),
+       exp = replace(exp, grepl("BSB273[BC]C05HSOXYLGA11", filename)&start_date=="2019-10-15", "LGA12")) 
 
 date_time_subject_df_comp <-
   left_join(date_time_subject_no0,
@@ -269,10 +277,18 @@ date_time_subject_df_comp <-
   mutate(valid = ifelse(grepl("SHA", exp) & experiment_duration > 115 & stringr::str_detect(end_datetime, excel_date) & !grepl("C01", cohort), "yes", 
     ifelse(grepl("SHA", exp) & stringr::str_detect(end_datetime, excel_date) & experiment_duration > 175 & grepl("C01", cohort), "yes",
            # ifelse(grepl("LGA", exp) & stringr::str_detect(end_datetime, excel_date) & experiment_duration > 715 & !grepl("C0(1|3|4)", cohort), "yes", #later cohorts use end date
-                  ifelse(grepl("LGA", exp) & stringr::str_detect(start_datetime, excel_date) & experiment_duration > 715 & grepl("C0(1|3|4|5)", cohort), "yes", # earlier cohorts use start date
-                         ifelse(grepl("PR", exp) & stringr::str_detect(end_datetime, excel_date) & experiment_duration > 55 ,"yes", 
-                                "no"))))) %>% ## Using start date ## Got these numbers from Lauren on 3/16/2020
+                  ifelse(grepl("LGA", exp) & stringr::str_detect(start_datetime, excel_date) & experiment_duration > 715 & grepl("C0(1|4|5)", cohort), "yes", # earlier cohorts use start date
+                         ifelse(grepl("LGA", exp) & stringr::str_detect(end_datetime, excel_date) & experiment_duration > 715 & grepl("C03", cohort), "yes", # XX 5/21 found that C03 uses end date
+                                ifelse(grepl("PR", exp) & stringr::str_detect(end_datetime, excel_date) & experiment_duration > 55 ,"yes", 
+                                "no")))))) %>% ## Using start date ## Got these numbers from Lauren on 3/16/2020
   ungroup() 
+
+# see the distribution of valid cases
+date_time_subject_df_comp %>% select(exp, valid, cohort) %>% table()
+date_time_subject_df_comp %>% subset(valid == "no"&cohort=="C03") %>% select(exp, filename) %>% table() %>% as.data.frame() %>% subset(Freq!=0) %>% get_dupes(exp)
+date_time_subject_df_comp %>% subset(cohort == "C03") %>% mutate(end_date = as.character(as.Date(end_datetime))) %>% distinct(exp, start_date, end_date, excel_date) %>% mutate(matches = ifelse(start_date == excel_date, "start", ifelse(end_date == excel_date, "end", "neither"))) %>% select(matches) %>% table()
+
+
 ## date_time_subject_df_comp %>% subset(valid == "no") %>% dplyr::filter(map2_lgl(excel_date, start_datetime, str_detect)) checking row by row if the comparison is working (using tidyverse)
 date_time_subject_df_comp %>% subset(valid == "no") %>% select(cohort, exp) %>% table()
 date_time_subject_df_comp %>% add_count(labanimalid, exp) %>% subset(valid == "no"&n ==1) %>% select(labanimalid, exp) %>% table()
@@ -414,15 +430,16 @@ lga_rewards_new <-  lapply(lga_new_files, read_rewards_new) %>% rbindlist() %>% 
   bind_cols(lga_subjects_new) %>% 
   separate(labanimalid, into = c("labanimalid", "cohort", "exp", "filename", "date", "time", "box"), sep = "_") %>% 
   mutate(date = lubridate::mdy(date), time = chron::chron(times = time)) 
-
-# %>%  
-#   left_join(., date_time_subject_df_comp %>% 
-#               select(cohort, exp, filename, valid, start_date, start_time) %>% 
-#               rename("date" = "start_date", "time" = "start_time"), 
-#             by = c("cohort", "exp", "filename", "date", "time")) %>% 
-#   dplyr::filter(valid == "yes") %>% 
-#   mutate(time = as.character(time)) %>%
-#   distinct() # fixes duplicates in filenames %in% c("MED1113C07HSlga06", "MED1110C05HSlga08", "MED1110C05HSlga09") ### there are no dupes for dplyr::filter(!grepl("[MF]\\d+", labanimalid)) 
+lga_rewards_new_valid <- lga_rewards_new %>%
+  mutate(date = as.character(date), time = as.character(time)) %>% 
+  left_join(., date_time_subject_df_comp %>%
+              select(cohort, exp, filename, valid, start_date, start_time) %>%
+              rename("date" = "start_date", "time" = "start_time"),
+            by = c("cohort", "exp", "filename", "date", "time")) 
+# %>%
+  # dplyr::filter(valid == "yes") %>%
+  # mutate(time = as.character(time)) %>%
+  # distinct() # fixes duplicates in filenames %in% c("MED1113C07HSlga06", "MED1110C05HSlga08", "MED1110C05HSlga09") ### there are no dupes for dplyr::filter(!grepl("[MF]\\d+", labanimalid))
 
 
 ### dealing with missing and mislabelled subjects 
@@ -492,16 +509,19 @@ lga_rewards_old <- lapply(lga_old_files, read_fread_old, "rewards") %>% rbindlis
 
 # deal with the missing subjects...
 lga_rewards_old %>% dplyr::filter(!grepl("[MF]", labanimalid)) %>% dim
-# will remove these cases bc these files have 7 subjects and both misssing subjects have another "session" (matched box)
-# lga_rewards_old %<>% dplyr::filter(grepl("[MF]", labanimalid)) 
 
 ## case: deal with mislabelled subject?
-lga_subjects_old %>% dplyr::filter(grepl("NA",))
 lga_rewards_old %>% add_count(labanimalid, cohort,exp) %>% subset(n != 1) %>% arrange(labanimalid, as.numeric(rewards)) # thinking that the rewards = 41 belongs to F111
 # lga_rewards_old %>% subset(labanimalid == "F111"&exp == "LGA01") returns nothing, so my guess is that the F128 labelled reward is mislabelled
+lga_rewards_old %>% get_dupes(labanimalid, exp) 
 
-
-
+lga_rewards_old <- lga_rewards_old %>% 
+  mutate(labanimalid = replace(labanimalid, filename=="./C01/Old/LGA/K1C01HSOXYLGA01-20180815.txt"&computer == "K1", "F122")) %>% ## noted in excel for C01 OXY "Rat F122 is F128 on the K1 Data file"
+  add_count(labanimalid, exp) %>% 
+  dplyr::filter(n==1|(n!=1 & grepl("-2.txt", filename))) %>% 
+  select(-n)
+  
+lga_rewards_old %>% get_dupes(labanimalid, exp) 
 
 
 
@@ -515,10 +535,10 @@ lga_rewards_old %>% add_count(labanimalid, cohort,exp) %>% subset(n != 1) %>% ar
 ################################
 
 ###### NEW FILES ##############
-pr_new_files <- grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*New.*PR/", value = T) # 83 files
+pr_new_files <- grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*New.*PR/", value = T) # 99 files
 # label data with...
 pr_subjects_new <- process_subjects_new(pr_new_files) %>% separate(labanimalid, c("row", "labanimalid"), sep = "_", extra = "merge") %>%
-  arrange(filename, as.numeric(row)) %>% select(-c(row, filename)) # 1037
+  arrange(filename, as.numeric(row)) %>% select(-c(row, filename)) # 1232
 
 
 # extract data with diff function from `read_rewards_new` for sha
@@ -531,22 +551,25 @@ pr_rewards_new <- lapply(pr_new_files, readrewards_pr) %>% rbindlist() %>% separ
   bind_cols(pr_subjects_new) %>%
   separate(
     labanimalid,
-    into = c("labanimalid", "cohort", "exp", "filename", "date", "time"),
+    into = c("labanimalid", "cohort", "exp", "filename", "date", "time", "box"),
     sep = "_"
   ) %>% mutate(
     date = lubridate::mdy(date) %>% as.character,
     time = chron::chron(times = time) %>% as.character
-  ) 
+  ) %>% 
+  mutate(exp = mgsub::mgsub(exp, c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4)))) # uniform exp names to join to subject comp
 
-# %>% mutate(time = str_extract(end_datetime, "\\d{2}:\\d{2}:\\d{2}") for below code
-pr_rewards_new_join <- left_join(pr_rewards_new %>% mutate(start_datetime = paste(date, time)), date_time_subject_df_comp, by = c("cohort", "exp", "filename", "start_datetime")) %>% 
+## for missing subjects 
+pr_rewards_new <- left_join(pr_rewards_new %>% mutate(start_datetime = paste(date, time)), date_time_subject_df_comp, by = c("cohort", "exp", "filename", "start_datetime")) %>% 
   mutate(labanimalid = coalesce(labanimalid.y, labanimalid.x)) %>% 
   select(-c("labanimalid.x", "labanimalid.y")) %>% 
   mutate(rewards = replace(rewards, cohort == "C04"&exp == "PR02", NA)) %>% # "it was noted in the lab notebook that this data did not record properly, even though it was extracted from the computers; But Giordano fixed this issue for the cohorts after C04" - Lani (3/31)
-  select(-c(setdiff(names(.), names(pr_rewards_new))))
+  select(-c(setdiff(names(.), names(pr_rewards_new)))) %>% 
+  distinct() #1232 gets rid of many cases from cohort 4 and 5 of 0 rewards 
 
 
 # qc with...
+pr_rewards_new %>% get_dupes(labanimalid, exp)
 pr_rewards_new %>% count(labanimalid, exp, cohort) %>% subset(n!=1)
 pr_rewards_new %>% distinct() %>% add_count(labanimalid, exp, cohort) %>% subset(n!=1)
 
@@ -580,24 +603,18 @@ pr_subjects_old <- process_subjects_old(pr_old_files) ## quick qc pr_subjects_ol
 pr_rewards_old <- lapply(pr_old_files, read_fread_old, "rewards") %>% rbindlist() %>% separate(V1, into = c("row", "rewards"), sep = "_") %>% arrange(filename, as.numeric(row)) %>% select(-row) %>% 
   bind_cols(pr_subjects_old %>% arrange(filename, as.numeric(row)) %>% select(-c("row", "filename"))) %>% 
   separate(labanimalid, into = c("labanimalid", "box", "cohort", "exp", "computer", "date"), sep = "_") %>% 
-  mutate(date = lubridate::ymd(date))
-         # rewards = rewards %>% as.numeric()) 
-# %>% 
-#   dplyr::filter(valid == "valid") # no need for distinct() bc it is not an issue here
+  mutate(date = lubridate::ymd(date),
+         rewards = as.numeric(rewards)) %>% 
+  mutate(exp = mgsub::mgsub(exp, c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4)))) # uniform exp names to join to subject comp
+
+
 
 # deal with the missing subjects...
 pr_rewards_old %>% subset(!grepl("M|F(\\d){3}", labanimalid)) %>% select(labanimalid) %>% table()
 
 ## case: deal with mislabelled subjects? (each id should be associated with one exp)
+pr_rewards_old %>% get_dupes(labanimalid, exp)
 pr_rewards_old %>% add_count(labanimalid, cohort,exp) %>% subset(n != 1)
-# pr_rewards_old <- pr_rewards_old %>% 
-#   mutate(labanimalid = replace(labanimalid, box == "2"&filename=="./C01/Old/PR/K3C01HSPR02-20170905.txt", "M21"), 
-#          labanimalid = replace(labanimalid, box == "3"&filename=="./C01/Old/PR/K2C01HSPR01-20170814.txt", "M3")) %>% 
-#   dplyr::filter(!(rewards == 0 & labanimalid == "M3" & filename == "./C01/Old/PR/K2C01HSPR01-20170814.txt")) %>% 
-#   mutate(date = lubridate::ymd(date))
-# %>% 
-#   add_count(labanimalid, cohort,exp) %>% 
-#   subset(n != 1) 
 
-
-
+pr_rewards_old <- pr_rewards_old %>% 
+  dplyr::filter(!(labanimalid=="F120"&rewards=="0"&exp=="PR05_T03"))
