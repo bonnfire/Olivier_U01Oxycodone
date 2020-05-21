@@ -22,6 +22,44 @@ rewards <- rbindlist(
 rewards <- rewards %>% mutate(exp = mgsub::mgsub(exp, c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4))))
 
 
+
+
+######### JOIN TO WFU DATABASE 
+
+# add notes about missingness (file or dead)
+
+Olivier_Oxycodone_df <- WFU_OlivierOxycodone_test_df %>%
+  rename("wfu_labanimalid" = "labanimalid") %>%
+  mutate(cohort = paste0("C", cohort)) %>%
+  dplyr::filter(grepl("^\\d", rfid)) %>% #811 (ignore the blanks and annotations in the excel)
+  left_join(., allcohorts2[, c("labanimalid", "rfid")], by = "rfid") %>% # add labanimalid number
+  left_join(., computernotes_coc, by = "cohort") %>% # 27313 (explains missing files for every session, every rat)
+  # left_join(., ratinfo_list_replacements_processed, by = c("rfid", "cohort")) %>% # replacements XX WAITING FOR THEM TO CONFIRM MISSING RFID
+  left_join(., rewards, by = c("labanimalid", "cohort", 
+                               "exp")) %>% # 15527 ## ADDING THE RAW REWARDS DATA
+  # left_join(.,
+  #   allcohorts2 %>% select(labanimalid, rfid, matches("^sha")) %>% distinct() %>%
+  #     gather(exp, rewards_excel, sha01:sha10) %>% mutate(exp = toupper(exp)),
+  #   by = c("labanimalid", "rfid", "exp")
+  # ) %>% ## 5/20 not sure why added this, perhaps to add excel rewards data
+  # rename("rewards_raw" = "rewards",
+  #        "exp_date" = "date",
+  #        "exp_time" = "time") %>% # 15527
+  left_join(., ratinfo_list_deaths_processed, by = c("rfid", "cohort")) %>% # deaths/compromises
+  mutate_at(vars(contains("date")), lubridate::ymd) %>%
+  group_by(labanimalid) %>%
+  mutate(
+    flag = case_when(
+      grepl("Died", reasoning) & date >= datedropped ~ "DEAD_EXCLUDE", ## if the animal has died, remove all data on the data and after
+      !grepl("Died", reasoning) & date == datedropped ~ "COMP_EXCLUDE" ## if the animal was compromised, only flag that day
+    )
+  ) %>%
+  ungroup()
+
+Olivier_Cocaine_df %>% select(cohort, rfid, exp, rewards, datedropped, flag) %>% subset(!is.na(flag))
+
+
+
 olivieroxy_excel %>% distinct()
 
 ## EXCEL LONG FORMAT
