@@ -429,13 +429,52 @@ lga_subjects_new <- process_subjects_new(lga_new_files) %>% separate(labanimalid
 lga_rewards_new <-  lapply(lga_new_files, read_rewards_new) %>% rbindlist() %>% separate(V1, into = c("row", "rewards"), sep = "_") %>% arrange(filename, as.numeric(row)) %>% select(-row) %>% 
   bind_cols(lga_subjects_new) %>% 
   separate(labanimalid, into = c("labanimalid", "cohort", "exp", "filename", "date", "time", "box"), sep = "_") %>% 
-  mutate(date = lubridate::mdy(date), time = chron::chron(times = time)) 
-lga_rewards_new_valid <- lga_rewards_new %>%
-  mutate(date = as.character(date), time = as.character(time)) %>% 
-  left_join(., date_time_subject_df_comp %>%
-              select(cohort, exp, filename, valid, start_date, start_time) %>%
+  mutate(date = lubridate::mdy(date), time = chron::chron(times = time)) %>% 
+  mutate(date = as.character(date), time = as.character(time))
+  
+
+## before bindng to date_time_subject_df_comp to make sure that the exp matches
+lga_rewards_new <- lga_rewards_new %>% 
+  mutate(exp = replace(exp, filename == "MED1110C03HSOXYLGA17"&date=="2019-02-28", "LGA18"),
+         exp = replace(exp, grepl("BSB273[BCDE]C04HSOXYLGA15", filename)&date=="2019-07-26", "LGA16"),
+         exp = replace(exp, grepl("BSB273[BC]C05HSOXYLGA11", filename)&date=="2019-10-15", "LGA12")) 
+
+# lga_rewards_new <- lga_rewards_new %>%
+#   mutate(date = as.character(date), time = as.character(time)) %>% 
+#   left_join(., date_time_subject_df_comp %>%
+#               select(labanimalid, cohort, exp, filename, valid, start_date, start_time) %>%
+#               rename("date" = "start_date", "time" = "start_time"),
+#             by = c("cohort", "exp", "filename", "date", "time")) %>% get_dupes(labanimalid, exp)
+
+
+## deal with missing subjects and give valid
+setDT(lga_rewards_new)             # convert to data.table without copy
+lga_rewards_new[setDT(lga_rewards_new %>% dplyr::filter(!grepl("[MF]", labanimalid)) %>% 
+                        left_join(., date_time_subject_df_comp %>%
+                                    select(labanimalid, cohort, exp, filename, valid, start_date, start_time) %>%
+                                    rename("date" = "start_date", "time" = "start_time"),
+                                  by = c("cohort", "exp", "filename", "date", "time"), all.x = T)), 
+                     on = c("rewards", "exp", "filename", "date", "time"), labanimalid := labanimalid.y] # don't want to make another missing object
+setDF(lga_rewards_new)
+lga_rewards_new %>%  
+  left_join(., date_time_subject_df_comp %>% 
+              select(filename, valid, start_date, start_time) %>% 
               rename("date" = "start_date", "time" = "start_time"),
-            by = c("cohort", "exp", "filename", "date", "time")) 
+            by = c("filename", "date", "time")) %>% 
+  get_dupes(labanimalid, exp)
+# among the 123, there are a few weird cases 
+# 3 F418        LGA19          2 0.000   C04    BSB273CC04HSOXYLGA19 2019-08-05 16:38:50 1     yes  
+# 4 F418        LGA19          2 0.000   C04    BSB273CC04HSOXYLGA19 2019-08-05 16:38:50 2     yes  
+# see below code for more -- lots of weird boxes... check if assignment is correct
+lga_rewards_new %>%  
+  left_join(., date_time_subject_df_comp %>% 
+              select(filename, valid, start_date, start_time) %>% 
+              rename("date" = "start_date", "time" = "start_time"),
+            by = c("filename", "date", "time")) %>% distinct() %>% subset(valid == "yes") %>% 
+  get_dupes(labanimalid, exp) 
+
+
+
 # %>%
   # dplyr::filter(valid == "yes") %>%
   # mutate(time = as.character(time)) %>%
@@ -446,10 +485,6 @@ lga_rewards_new_valid <- lga_rewards_new %>%
 lga_subjects_new %>% dplyr::filter(grepl("NA", labanimalid)) #281 
 lga_rewards_new %>% get_dupes(labanimalid, exp, cohort)
 
-lga_rewards_new <- lga_rewards_new %>% 
-  mutate(exp = replace(exp, filename == "MED1110C03HSOXYLGA17"&date=="2019-02-28", "LGA18"),
-         exp = replace(exp, grepl("BSB273[BCDE]C04HSOXYLGA15", filename)&date=="2019-07-26", "LGA16"),
-         exp = replace(exp, grepl("BSB273[BC]C05HSOXYLGA11", filename)&date=="2019-10-15", "LGA12")) 
 
 # without the valid column, remove the rewards that are 0's, causing the dupes 
 lga_rewards_new_valid <- lga_rewards_new %>% 
