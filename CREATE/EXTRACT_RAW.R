@@ -418,6 +418,13 @@ sha_rewards_old %>% get_dupes(exp, labanimalid)
 ################################
 setwd("~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS")
 
+
+## PROTOCOL 
+## 5/22 from Lauren
+# Experiment should only be 14 days, any additional days fill the time between the other experiments (PR and/or treatments) 
+# So I think you only need to extract the first 14 LgA for each cohort for analysis
+
+
 ###### NEW FILES ##############
 # label data with... 
 lga_new_files <- grep(grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*txt", inv = T, value = T), pattern = ".*LGA", value = T) # 370 files
@@ -426,7 +433,7 @@ lga_subjects_new <- process_subjects_new(lga_new_files) %>% separate(labanimalid
   arrange(filename, as.numeric(row)) %>% select(-c(row, filename))
 
 # extract data with 'read_rewards_new' function from SHA
-lga_rewards_new <-  lapply(lga_new_files, read_rewards_new) %>% rbindlist() %>% separate(V1, into = c("row", "rewards"), sep = "_") %>% arrange(filename, as.numeric(row)) %>% select(-row) %>% 
+lga_rewards_new <- lapply(lga_new_files, read_rewards_new) %>% rbindlist() %>% separate(V1, into = c("row", "rewards"), sep = "_") %>% arrange(filename, as.numeric(row)) %>% select(-row) %>% 
   bind_cols(lga_subjects_new) %>% 
   separate(labanimalid, into = c("labanimalid", "cohort", "exp", "filename", "date", "time", "box"), sep = "_") %>% 
   mutate(date = lubridate::mdy(date), time = chron::chron(times = time)) %>% 
@@ -451,16 +458,25 @@ lga_rewards_new <- lga_rewards_new %>%
 setDT(lga_rewards_new)             # convert to data.table without copy
 lga_rewards_new[setDT(lga_rewards_new %>% dplyr::filter(!grepl("[MF]", labanimalid)) %>% 
                         left_join(., date_time_subject_df_comp %>%
-                                    select(labanimalid, cohort, exp, filename, valid, start_date, start_time) %>%
+                                    select(labanimalid, cohort, exp, filename, valid, start_date, start_time, box) %>%
                                     rename("date" = "start_date", "time" = "start_time"),
-                                  by = c("cohort", "exp", "filename", "date", "time"), all.x = T)), 
-                     on = c("rewards", "exp", "filename", "date", "time"), labanimalid := labanimalid.y] # don't want to make another missing object
+                                  by = c("cohort", "exp", "filename", "date", "time", "box"), all.x = T)), 
+                     on = c("rewards", "exp", "filename", "date", "time", "box"), labanimalid := labanimalid.y] # don't want to make another missing object
 setDF(lga_rewards_new)
-lga_rewards_new %>%  
+
+
+lga_rewards_new_valid <- lga_rewards_new %>%  
   left_join(., date_time_subject_df_comp %>% 
               select(filename, valid, start_date, start_time) %>% 
               rename("date" = "start_date", "time" = "start_time"),
             by = c("filename", "date", "time")) %>% 
+  distinct() %>% 
+  subset(valid == "yes")
+  # subset(valid == "yes"|is.na(valid)) # is.na valid cases are from c03 lga19 and c04 lga24 that don't exist in the excel sheets
+
+lga_rewards_new_valid <- lga_rewards_new_valid %>% 
+  mutate(labanimalid = replace(labanimalid, filename == "BSB273CC04HSOXYLGA12"&box=="16", "M452")) # 5/22 "M452 should be in box 16 for that file" - Lani
+  
   get_dupes(labanimalid, exp)
 # among the 123, there are a few weird cases 
 # 3 F418        LGA19          2 0.000   C04    BSB273CC04HSOXYLGA19 2019-08-05 16:38:50 1     yes  
