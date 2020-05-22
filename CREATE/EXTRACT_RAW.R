@@ -475,7 +475,9 @@ lga_rewards_new_valid <- lga_rewards_new %>%
   # subset(valid == "yes"|is.na(valid)) # is.na valid cases are from c03 lga19 and c04 lga24 that don't exist in the excel sheets
 
 lga_rewards_new_valid <- lga_rewards_new_valid %>% 
-  mutate(labanimalid = replace(labanimalid, filename == "BSB273CC04HSOXYLGA12"&box=="16", "M452")) # 5/22 "M452 should be in box 16 for that file" - Lani
+  mutate(labanimalid = replace(labanimalid, filename == "BSB273CC04HSOXYLGA12"&box=="16", "M452"), # 5/22 "M452 should be in box 16 for that file" - Lani
+         labanimalid = replace(labanimalid, filename == "BSB273CC04HSOXYLGA12"&box=="15", "M451") # 5/22 "Box 15 should be M451" - Lani
+         ) 
   
   get_dupes(labanimalid, exp)
 # among the 123, there are a few weird cases 
