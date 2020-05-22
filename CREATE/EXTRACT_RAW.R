@@ -465,53 +465,21 @@ lga_rewards_new[setDT(lga_rewards_new %>% dplyr::filter(!grepl("[MF]", labanimal
 setDF(lga_rewards_new)
 
 
+# add valid column (above code does not)
 lga_rewards_new_valid <- lga_rewards_new %>%  
   left_join(., date_time_subject_df_comp %>% 
               select(filename, valid, start_date, start_time) %>% 
               rename("date" = "start_date", "time" = "start_time"),
             by = c("filename", "date", "time")) %>% 
   distinct() %>% 
-  subset(valid == "yes")
-  # subset(valid == "yes"|is.na(valid)) # is.na valid cases are from c03 lga19 and c04 lga24 that don't exist in the excel sheets
+  subset(valid == "yes") # Lauren says that we do not need to include the is.na valid cases are from c03 lga19 and c04 lga24 that don't exist in the excel sheets 
 
 lga_rewards_new_valid <- lga_rewards_new_valid %>% 
   mutate(labanimalid = replace(labanimalid, filename == "BSB273CC04HSOXYLGA12"&box=="16", "M452"), # 5/22 "M452 should be in box 16 for that file" - Lani
          labanimalid = replace(labanimalid, filename == "BSB273CC04HSOXYLGA12"&box=="15", "M451") # 5/22 "Box 15 should be M451" - Lani
          ) 
   
-  get_dupes(labanimalid, exp)
-# among the 123, there are a few weird cases 
-# 3 F418        LGA19          2 0.000   C04    BSB273CC04HSOXYLGA19 2019-08-05 16:38:50 1     yes  
-# 4 F418        LGA19          2 0.000   C04    BSB273CC04HSOXYLGA19 2019-08-05 16:38:50 2     yes  
-# see below code for more -- lots of weird boxes... check if assignment is correct
-lga_rewards_new %>%  
-  left_join(., date_time_subject_df_comp %>% 
-              select(filename, valid, start_date, start_time) %>% 
-              rename("date" = "start_date", "time" = "start_time"),
-            by = c("filename", "date", "time")) %>% distinct() %>% subset(valid == "yes") %>% 
-  get_dupes(labanimalid, exp) 
-
-
-
-# %>%
-  # dplyr::filter(valid == "yes") %>%
-  # mutate(time = as.character(time)) %>%
-  # distinct() # fixes duplicates in filenames %in% c("MED1113C07HSlga06", "MED1110C05HSlga08", "MED1110C05HSlga09") ### there are no dupes for dplyr::filter(!grepl("[MF]\\d+", labanimalid))
-
-
-### dealing with missing and mislabelled subjects 
-lga_subjects_new %>% dplyr::filter(grepl("NA", labanimalid)) #281 
-lga_rewards_new %>% get_dupes(labanimalid, exp, cohort)
-
-
-# without the valid column, remove the rewards that are 0's, causing the dupes 
-lga_rewards_new_valid <- lga_rewards_new %>% 
-  mutate(rewards = as.numeric(rewards)) %>% 
-  add_count(labanimalid,exp,cohort) %>%
-  dplyr::filter(n==1|(n!=1&rewards==0)) %>% 
-  select(-n)
-
-
+lga_rewards_new_valid %>% get_dupes(labanimalid, exp)
 
 
 ## note 
@@ -520,29 +488,6 @@ lga_rewards_new_valid <- lga_rewards_new %>%
 # C05 BSB273DC05HSOXYLGA09 2018-08-24 LGA09 ## not verified by excel -- excel has 2019-10-10 for LGA09
 # C05 BSB273DC05HSOXYLGA17 2018-09-14 LGA17 ## not verified by excel -- excel has 10/28/2019 for LGA17
 ## could not carry on with cohorts 6 and 7 (excel sheets not yet uploaded) 5/20
-
-
-## notes 
-## exclude files (from meeting)
-
-
-# deal with the missing subjects...
-# join and update "df" by reference, i.e. without copy 
-# setDT(sha_rewards_new)             # convert to data.table without copy
-# sha_rewards_new[setDT(sha_rewards_new %>% dplyr::filter(!grepl("[MF]", labanimalid)) %>% # this captures all "NA" cases as checked with mutate_at(vars(labanimalid), na_if, "NA") %>% dplyr::filter(is.na(labanimalid))
-#                         left_join(., date_time_subject_df_comp %>% 
-#                                     select(labanimalid, cohort, exp, filename, start_date, start_time) %>% 
-#                                     rename("date" = "start_date", "time" = "start_time") %>% 
-#                                     mutate(time = as.character(time)), 
-#                                   by = c("cohort", "exp", "filename", "date", "time")) ), 
-#                 on = c("rewards", "cohort", "exp", "filename", "date", "time", "valid"), labanimalid := labanimalid.y] # don't want to make another missing object
-# setDF(sha_rewards_new)
-# sha_rewards_new %<>% 
-#   mutate_at(vars(rewards), as.numeric)
-# ## case: deal with mislabelled subject?
-# sha_rewards_new %>% count(labanimalid, cohort,exp) %>% subset(n != 1)
-# sha_rewards_new %<>% mutate(labanimalid = replace(labanimalid, exp=="SHA01"&time=="09:24:16", "M768"))
-
 
 
 ###### OLD FILES ##############
