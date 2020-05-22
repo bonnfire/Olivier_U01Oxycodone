@@ -24,7 +24,9 @@ Olivier_Oxycodone_df <- WFU_OlivierOxycodone_test_df %>%
   rename("wfu_labanimalid" = "labanimalid") %>%
   mutate(cohort = paste0("C", cohort)) %>%
   dplyr::filter(grepl("^\\d", rfid)) %>% #811 (ignore the blanks and annotations in the excel)
-  left_join(., allcohorts2[, c("labanimalid", "rfid")], by = "rfid") %>% # add labanimalid number
+  left_join(., olivieroxy_excel[, c("labanimalid", "rfid")], by = "rfid") %>% # add labanimalid number
+  
+  ### PICK UP HERE AND EXTRACT THE COMPUTER NOTES EXCEL
   left_join(., computernotes_coc, by = "cohort") %>% # 27313 (explains missing files for every session, every rat)
   # left_join(., ratinfo_list_replacements_processed, by = c("rfid", "cohort")) %>% # replacements XX WAITING FOR THEM TO CONFIRM MISSING RFID
   left_join(., rewards, by = c("labanimalid", "cohort", 

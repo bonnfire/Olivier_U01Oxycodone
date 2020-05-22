@@ -228,3 +228,11 @@ nm1 <- paste("date", nm, sep = "_") # make these date columns
 selfadmin_rewards_cohort5[ , ( nm1 ) := lapply( dates, function(x) rep(x, each = .N) ) ] # make the date columns 
 
 
+
+
+
+##################################################
+
+
+########### EXTRACT THE COMPUTER NOTES ##########
+
