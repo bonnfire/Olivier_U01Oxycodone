@@ -385,7 +385,7 @@ sha_subjects_old <- process_subjects_old(sha_old_files)
 sha_rewards_old <- lapply(sha_old_files, read_fread_old, "rewards") %>% rbindlist() %>% separate(V1, into = c("row", "rewards"), sep = "_") %>% arrange(filename, as.numeric(row)) %>% select(-row) %>% 
   bind_cols(sha_subjects_old %>% arrange(filename, as.numeric(row)) %>% select(-c("row", "filename"))) %>% 
   separate(labanimalid, into = c("labanimalid", "box", "cohort", "exp", "computer", "date"), sep = "_") %>% 
-  mutate(date = lubridate::ymd(date),
+  mutate(date = lubridate::ymd(date) %>% as.character,
          rewards = rewards %>% as.numeric()) 
 
 sha_rewards_old %>% get_dupes(exp, labanimalid)
@@ -477,7 +477,8 @@ lga_rewards_new_valid <- lga_rewards_new %>%
 lga_rewards_new_valid <- lga_rewards_new_valid %>% 
   mutate(labanimalid = replace(labanimalid, filename == "BSB273CC04HSOXYLGA12"&box=="16", "M452"), # 5/22 "M452 should be in box 16 for that file" - Lani
          labanimalid = replace(labanimalid, filename == "BSB273CC04HSOXYLGA12"&box=="15", "M451") # 5/22 "Box 15 should be M451" - Lani
-         ) 
+         ) %>% 
+  mutate(rewards = as.numeric(rewards))
   
 lga_rewards_new_valid %>% get_dupes(labanimalid, exp)
 
@@ -499,7 +500,7 @@ lga_subjects_old <- process_subjects_old(lga_old_files)
 lga_rewards_old <- lapply(lga_old_files, read_fread_old, "rewards") %>% rbindlist() %>% separate(V1, into = c("row", "rewards"), sep = "_") %>% arrange(filename, as.numeric(row)) %>% select(-row) %>% 
   bind_cols(lga_subjects_old %>% arrange(filename, as.numeric(row)) %>% select(-c("row", "filename"))) %>% 
   separate(labanimalid, into = c("labanimalid", "box", "cohort", "exp", "computer", "date"), sep = "_") %>% 
-  mutate(date = lubridate::ymd(date),
+  mutate(date = lubridate::ymd(date) %>% as.character,
          rewards = rewards %>% as.numeric()) 
 
 # %>% 
@@ -563,8 +564,8 @@ pr_rewards_new <- left_join(pr_rewards_new %>% mutate(start_datetime = paste(dat
   select(-c("labanimalid.x", "labanimalid.y")) %>% 
   mutate(rewards = replace(rewards, cohort == "C04"&exp == "PR02", NA)) %>% # "it was noted in the lab notebook that this data did not record properly, even though it was extracted from the computers; But Giordano fixed this issue for the cohorts after C04" - Lani (3/31)
   select(-c(setdiff(names(.), names(pr_rewards_new)))) %>% 
-  distinct() #1232 gets rid of many cases from cohort 4 and 5 of 0 rewards 
-
+  distinct() %>% #1232 gets rid of many cases from cohort 4 and 5 of 0 rewards 
+  mutate(rewards = as.numeric(rewards))
 
 # qc with...
 pr_rewards_new %>% get_dupes(labanimalid, exp)
@@ -601,7 +602,7 @@ pr_subjects_old <- process_subjects_old(pr_old_files) ## quick qc pr_subjects_ol
 pr_rewards_old <- lapply(pr_old_files, read_fread_old, "rewards") %>% rbindlist() %>% separate(V1, into = c("row", "rewards"), sep = "_") %>% arrange(filename, as.numeric(row)) %>% select(-row) %>% 
   bind_cols(pr_subjects_old %>% arrange(filename, as.numeric(row)) %>% select(-c("row", "filename"))) %>% 
   separate(labanimalid, into = c("labanimalid", "box", "cohort", "exp", "computer", "date"), sep = "_") %>% 
-  mutate(date = lubridate::ymd(date),
+  mutate(date = lubridate::ymd(date) %>% as.character,
          rewards = as.numeric(rewards)) %>% 
   mutate(exp = mgsub::mgsub(exp, c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4)))) # uniform exp names to join to subject comp
 

@@ -3,25 +3,17 @@
 ## RAW
 # NEW and OLD and all exps combine 
 rewards <- rbindlist(
-  lapply(list(
+  list(
     "new_sha" = sha_rewards_new,
     "old_sha" = sha_rewards_old,
-    "new_lga" = lga_rewards_new,
+    "new_lga" = lga_rewards_new_valid,
     "old_lga" = lga_rewards_old,
-    "new_pr" = pr_rewards_new_join,
+    "new_pr" = pr_rewards_new,
     "old_pr" = pr_rewards_old
-  ), function(x){
-    x <- x %>% 
-      mutate_all(as.character)
-    return(x)
-  }),
+  ),
   idcol = "directory",
   fill = T
-)
-
-rewards <- rewards %>% mutate(exp = mgsub::mgsub(exp, c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4))))
-
-
+) ## 6876 observations from C01-7, no 2
 
 
 ######### JOIN TO WFU DATABASE 
