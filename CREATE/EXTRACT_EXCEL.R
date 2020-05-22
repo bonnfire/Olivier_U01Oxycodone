@@ -236,3 +236,12 @@ selfadmin_rewards_cohort5[ , ( nm1 ) := lapply( dates, function(x) rep(x, each =
 
 ########### EXTRACT THE COMPUTER NOTES ##########
 
+### EXTRACT THE COMPUTER NOTES FROM THEIR DROPBOX
+setwd("~/Dropbox (Palmer Lab)/GWAS (1)")
+computernotes_oxy <- u01.importxlsx("computer notes.xlsx")[[2]] %>% 
+  gather(exp, computernote, SHA01:cohort_notes) %>% 
+  clean_names() %>% 
+  dplyr::filter(grepl("^C", cohort)) %>% 
+  naniar::replace_with_na(replace = list(computernote = "NA"))
+
+
