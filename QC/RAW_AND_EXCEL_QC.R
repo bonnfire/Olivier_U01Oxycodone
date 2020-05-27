@@ -25,22 +25,22 @@ Olivier_Oxycodone_df <- WFU_OlivierOxycodone_test_df %>% select(cohort, rfid, co
   mutate(cohort = paste0("C", cohort)) %>%
   dplyr::filter(grepl("^\\d", rfid)) %>% #525 (ignore the blanks and annotations in the excel)
   left_join(., olivieroxy_excel[, c("labanimalid", "rfid")], by = "rfid") %>% # add labanimalid number
-  left_join(., ratinfo_list_deaths_processed %>% select(-naive) %>% subset(grepl("surgery", reasoning)), by = c("rfid", "cohort")) %>% # 21608 # deaths/compromises before any experiments 
+  left_join(., ratinfo_list_deaths_processed %>% select(-c("naive", "datedropped")) %>% subset(grepl("surgery", reasoning)), by = c("rfid", "cohort")) %>% # 21608 # deaths/compromises before any experiments 
   left_join(., ratinfo_list_replacements_processed %>% subset(grepl("^RENUMBERED", comment, ignore.case = T)) %>% select(cohort, originalrat, replacement), by = c("tailmark"="originalrat", "cohort")) %>% # replacements, when the animal dies labanimalid changes XX WAITING FOR THEM TO CONFIRM MISSING RFID
   left_join(., ratinfo_list_replacements_processed %>% subset(grepl("Not Renumbered", comment, ignore.case = T)) %>% select(cohort, rfidreplacement), by = c("rfid"="rfidreplacement", "cohort")) %>% 
-  # mutate(labanimalid = replace(labanimalid, grepl("Died.*during surgery", reasoning))  )
-  mutate(reasoning = replace(reasoning, labanimalid == "F336", "died during surgery")) %>% 
   mutate(labanimalid = coalesce(labanimalid, replacement),
          tailmark = ifelse(!is.na(tailmark), paste(tailmark, "originally but replaced"), tailmark),
          comment = ifelse(!is.na(reasoning)&is.na(comment), reasoning,
                           ifelse(!is.na(reasoning)&!is.na(comment), paste0(comment, "; ", reasoning), comment))) %>%
-  select(-replacement)
-%>% # replacements, when the animal is the replacement labanimalid changes XX WAITING FOR THEM TO CONFIRM MISSING RFID
-  left_join(., computernotes_oxy, by = "cohort") %>% # 21525 (explains missing files for every session, every rat)
-  ### PICK UP HERE AND EXTRACT THE COMPUTER NOTES EXCEL
-  # left_join(., ratinfo_list_replacements_processed, by = c("rfid", "cohort")) %>% # replacements XX WAITING FOR THEM TO CONFIRM MISSING RFID
+  select(-c("replacement", "reasoning")) %>% # replacements, when the animal is the replacement labanimalid changes XX WAITING FOR THEM TO CONFIRM MISSING RFID
+  left_join(., computernotes_oxy %>% subset(!grepl("cohort_notes", exp)) %>% select(cohort, exp, computernote), by = "cohort") %>% # 21525 (explains missing files for every session, every rat)
+  rename("computernote_exp" = "computernote") %>% 
+  left_join(., computernotes_oxy %>% subset(grepl("cohort_notes", exp)) %>% select(cohort, computernote), by = "cohort") %>% 
+  # rowwise() %>% 
+  # mutate(comment = ifelse(grepl(computernote, filename)&is.na(comment), reasoning,
+  #                         ifelse(!is.na(reasoning)&!is.na(comment), paste0(comment, "; ", reasoning), comment))) %>% # 21525 (explains missing files for every session, every rat)
   left_join(., rewards, by = c("labanimalid", "cohort", "exp")) %>% # 21526 ## ADDING THE RAW REWARDS DATA # M155 WFU_OlivierOxycodone_test_df %>%rename("wfu_labanimalid" = "labanimalid") %>%mutate(cohort = paste0("C", cohort)) %>%dplyr::filter(grepl("^\\d", rfid)) %>% #811 (ignore the blanks and annotations in the excel)left_join(., olivieroxy_excel[, c("labanimalid", "rfid")], by = "rfid") %>% # add labanimalid numberleft_join(., computernotes_oxy, by = "cohort") %>% # 21525 (explains missing files for every session, every rat)subset(cohort == "C01") %>% add_count(labanimalid) %>% rename("n_cnotes_count" = "n") %>% left_join(., rewards, by = c("labanimalid", "cohort", "exp")) %>% add_count(labanimalid) %>% rename("n_crewards_count" = "n") %>% subset(n_cnotes_count != n_crewards_count) %>% View() 
-  left_join(., ratinfo_list_deaths_processed, by = c("rfid", "cohort")) %>% # 21608 # deaths/compromises # look back on 933000120138753 and 933000320047461 # bc we are trying to use data for as many days as possible, so hteh deatsh table may have repeats
+  left_join(., ratinfo_list_deaths_processed %>% select(-c("tailmark", "naive")), by = c("rfid", "cohort")) %>% # 21608 # deaths/compromises # look back on 933000120138753 and 933000320047461 # bc we are trying to use data for as many days as possible, so hteh deatsh table may have repeats
   mutate_at(vars(contains("date")), lubridate::ymd) %>%
   group_by(labanimalid) %>%
   mutate(
@@ -49,7 +49,9 @@ Olivier_Oxycodone_df <- WFU_OlivierOxycodone_test_df %>% select(cohort, rfid, co
       !grepl("Died", reasoning) & date == datedropped ~ "COMP_EXCLUDE" ## if the animal was compromised, only flag that day
     )
   ) %>%
-  ungroup() 
+  ungroup() %>% 
+  select(cohort, rfid, labanimalid, exp, rewards, date, time, filename, tailmark, computernote_exp, computernote, everything())
+## fix below code, bc grepl won't know to parse each character cell
 %>% 
   rowwise() %>% 
   mutate(comment = ifelse(grepl(filename, computernote)&!is.na(comment), paste0("EXPECTED RAW MISSING; ", comment), 
