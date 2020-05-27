@@ -23,22 +23,13 @@ rewards <- rbindlist(
 Olivier_Oxycodone_df <- WFU_OlivierOxycodone_test_df %>%
   rename("wfu_labanimalid" = "labanimalid") %>%
   mutate(cohort = paste0("C", cohort)) %>%
-  dplyr::filter(grepl("^\\d", rfid)) %>% #811 (ignore the blanks and annotations in the excel)
+  dplyr::filter(grepl("^\\d", rfid)) %>% #525 (ignore the blanks and annotations in the excel)
   left_join(., olivieroxy_excel[, c("labanimalid", "rfid")], by = "rfid") %>% # add labanimalid number
   left_join(., computernotes_oxy, by = "cohort") %>% # 21525 (explains missing files for every session, every rat)
   ### PICK UP HERE AND EXTRACT THE COMPUTER NOTES EXCEL
   # left_join(., ratinfo_list_replacements_processed, by = c("rfid", "cohort")) %>% # replacements XX WAITING FOR THEM TO CONFIRM MISSING RFID
-  left_join(., rewards, by = c("labanimalid", "cohort", 
-                               "exp")) %>% # 21526 ## ADDING THE RAW REWARDS DATA
-  # left_join(.,
-  #   allcohorts2 %>% select(labanimalid, rfid, matches("^sha")) %>% distinct() %>%
-  #     gather(exp, rewards_excel, sha01:sha10) %>% mutate(exp = toupper(exp)),
-  #   by = c("labanimalid", "rfid", "exp")
-  # ) %>% ## 5/20 not sure why added this, perhaps to add excel rewards data
-  # rename("rewards_raw" = "rewards",
-  #        "exp_date" = "date",
-  #        "exp_time" = "time") %>% # 15527
-  left_join(., ratinfo_list_deaths_processed, by = c("rfid", "cohort")) %>% # deaths/compromises
+  left_join(., rewards, by = c("labanimalid", "cohort", "exp")) %>% # 21526 ## ADDING THE RAW REWARDS DATA # M155 WFU_OlivierOxycodone_test_df %>%rename("wfu_labanimalid" = "labanimalid") %>%mutate(cohort = paste0("C", cohort)) %>%dplyr::filter(grepl("^\\d", rfid)) %>% #811 (ignore the blanks and annotations in the excel)left_join(., olivieroxy_excel[, c("labanimalid", "rfid")], by = "rfid") %>% # add labanimalid numberleft_join(., computernotes_oxy, by = "cohort") %>% # 21525 (explains missing files for every session, every rat)subset(cohort == "C01") %>% add_count(labanimalid) %>% rename("n_cnotes_count" = "n") %>% left_join(., rewards, by = c("labanimalid", "cohort", "exp")) %>% add_count(labanimalid) %>% rename("n_crewards_count" = "n") %>% subset(n_cnotes_count != n_crewards_count) %>% View() 
+  left_join(., ratinfo_list_deaths_processed, by = c("rfid", "cohort")) %>% # 21608 # deaths/compromises # look back on 933000120138753 and 933000320047461 # bc we are trying to use data for as many days as possible, so hteh deatsh table may have repeats
   mutate_at(vars(contains("date")), lubridate::ymd) %>%
   group_by(labanimalid) %>%
   mutate(
@@ -47,7 +38,32 @@ Olivier_Oxycodone_df <- WFU_OlivierOxycodone_test_df %>%
       !grepl("Died", reasoning) & date == datedropped ~ "COMP_EXCLUDE" ## if the animal was compromised, only flag that day
     )
   ) %>%
-  ungroup()
+  ungroup() 
+
+## why 
+
+WFU_OlivierOxycodone_test_df %>%
+  rename("wfu_labanimalid" = "labanimalid") %>%
+  mutate(cohort = paste0("C", cohort)) %>%
+  dplyr::filter(grepl("^\\d", rfid)) %>% #811 (ignore the blanks and annotations in the excel)
+  left_join(., olivieroxy_excel[, c("labanimalid", "rfid")], by = "rfid") %>% # add labanimalid number
+  left_join(., computernotes_oxy, by = "cohort") %>% # 21525 (explains missing files for every session, every rat)
+  ### PICK UP HERE AND EXTRACT THE COMPUTER NOTES EXCEL
+  # left_join(., ratinfo_list_replacements_processed, by = c("rfid", "cohort")) # replacements XX WAITING FOR THEM TO CONFIRM MISSING RFID
+  left_join(., rewards, by = c("labanimalid", "cohort", "exp")) %>% 
+  subset(cohort %in% c("C01", "C04")) %>% add_count(labanimalid) %>% rename("n_rewards_count" = "n") %>% 
+  left_join(., ratinfo_list_deaths_processed, by = c("rfid", "cohort")) %>% add_count(labanimalid) %>% rename("n_deaths_count" = "n") %>% subset(n_rewards_count!=n_deaths_count)
+
+
+# left_join(.,
+#   allcohorts2 %>% select(labanimalid, rfid, matches("^sha")) %>% distinct() %>%
+#     gather(exp, rewards_excel, sha01:sha10) %>% mutate(exp = toupper(exp)),
+#   by = c("labanimalid", "rfid", "exp")
+# ) %>% ## 5/20 not sure why added this, perhaps to add excel rewards data
+# rename("rewards_raw" = "rewards",
+#        "exp_date" = "date",
+#        "exp_time" = "time") %>% # 15527
+
 
 Olivier_Cocaine_df %>% select(cohort, rfid, exp, rewards, datedropped, flag) %>% subset(!is.na(flag))
 
