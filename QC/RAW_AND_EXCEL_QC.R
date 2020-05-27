@@ -20,11 +20,22 @@ rewards <- rbindlist(
 
 # add notes about missingness (file or dead)
 
-Olivier_Oxycodone_df <- WFU_OlivierOxycodone_test_df %>%
-  rename("wfu_labanimalid" = "labanimalid") %>%
+Olivier_Oxycodone_df <- WFU_OlivierOxycodone_test_df %>% select(cohort, rfid, comment) %>% 
+  # rename("wfu_labanimalid" = "labanimalid") %>%
   mutate(cohort = paste0("C", cohort)) %>%
   dplyr::filter(grepl("^\\d", rfid)) %>% #525 (ignore the blanks and annotations in the excel)
   left_join(., olivieroxy_excel[, c("labanimalid", "rfid")], by = "rfid") %>% # add labanimalid number
+  left_join(., ratinfo_list_deaths_processed %>% select(-naive) %>% subset(grepl("surgery", reasoning)), by = c("rfid", "cohort")) %>% # 21608 # deaths/compromises before any experiments 
+  left_join(., ratinfo_list_replacements_processed %>% subset(grepl("^RENUMBERED", comment, ignore.case = T)) %>% select(cohort, originalrat, replacement), by = c("tailmark"="originalrat", "cohort")) %>% # replacements, when the animal dies labanimalid changes XX WAITING FOR THEM TO CONFIRM MISSING RFID
+  left_join(., ratinfo_list_replacements_processed %>% subset(grepl("Not Renumbered", comment, ignore.case = T)) %>% select(cohort, rfidreplacement), by = c("rfid"="rfidreplacement", "cohort")) %>% 
+  # mutate(labanimalid = replace(labanimalid, grepl("Died.*during surgery", reasoning))  )
+  mutate(reasoning = replace(reasoning, labanimalid == "F336", "died during surgery")) %>% 
+  mutate(labanimalid = coalesce(labanimalid, replacement),
+         tailmark = ifelse(!is.na(tailmark), paste(tailmark, "originally but replaced"), tailmark),
+         comment = ifelse(!is.na(reasoning)&is.na(comment), reasoning,
+                          ifelse(!is.na(reasoning)&!is.na(comment), paste0(comment, "; ", reasoning), comment))) %>%
+  select(-replacement)
+%>% # replacements, when the animal is the replacement labanimalid changes XX WAITING FOR THEM TO CONFIRM MISSING RFID
   left_join(., computernotes_oxy, by = "cohort") %>% # 21525 (explains missing files for every session, every rat)
   ### PICK UP HERE AND EXTRACT THE COMPUTER NOTES EXCEL
   # left_join(., ratinfo_list_replacements_processed, by = c("rfid", "cohort")) %>% # replacements XX WAITING FOR THEM TO CONFIRM MISSING RFID
@@ -39,6 +50,10 @@ Olivier_Oxycodone_df <- WFU_OlivierOxycodone_test_df %>%
     )
   ) %>%
   ungroup() 
+%>% 
+  rowwise() %>% 
+  mutate(comment = ifelse(grepl(filename, computernote)&!is.na(comment), paste0("EXPECTED RAW MISSING; ", comment), 
+                          ifelse(grepl(filename, computernote)&is.na(comment), "EXPECTED RAW MISSING", comment)))
 
 ## why only 200+ unique labanimals even though there are 500+ unique rfid's
 Olivier_Oxycodone_df %>% distinct(rfid) %>% dim
