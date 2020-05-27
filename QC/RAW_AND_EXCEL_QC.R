@@ -40,7 +40,10 @@ Olivier_Oxycodone_df <- WFU_OlivierOxycodone_test_df %>%
   ) %>%
   ungroup() 
 
-## why 
+## why only 200+ unique labanimals even though there are 500+ unique rfid's
+Olivier_Oxycodone_df %>% distinct(rfid) %>% dim
+WFU_OlivierOxycodone_test_df %>% distinct(rfid) %>% dim
+Olivier_Oxycodone_df %>% distinct(labanimalid, rfid) %>% get_dupes(labanimalid)
 
 WFU_OlivierOxycodone_test_df %>%
   rename("wfu_labanimalid" = "labanimalid") %>%
