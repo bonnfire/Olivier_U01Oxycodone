@@ -399,9 +399,9 @@ sha_rewards_old %>% dplyr::filter(!grepl("[MF]", labanimalid)) %>% dim
 # sha_rewards_old %<>% dplyr::filter(grepl("[MF]", labanimalid)) 
 
 ## case: deal with mislabelled subject?
+sha_rewards_old %<>% subset(!((grepl("K3C01HSOXYSHA01-20180730.txt", filename)&labanimalid == "M153"&rewards==0)|(grepl("K3C01HSOXYSHA01-20180730.txt", filename)&labanimalid == "M155"&rewards==0))) #  5/28 "ignore the first occurence of box 5 and box 6 in K3C01HSOXYSHA01-20180730.txt" - Lauren
 sha_rewards_old %<>% add_count(labanimalid, cohort,exp) %<>% dplyr::filter(n == 1|(n!=1&rewards!=0)) %<>% select(-n)
 sha_rewards_old %>% get_dupes(exp, labanimalid)
-
 
 
 
