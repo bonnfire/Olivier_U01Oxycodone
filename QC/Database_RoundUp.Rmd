@@ -1,5 +1,5 @@
 ---
-title: "Database Round Up"
+title: "Database Round Up Oxycodone"
 author: 'Palmer Lab: Bonnie Lin'
 output: pdf_document
 date: "`r format(Sys.time(), '%d %B, %Y')`"
@@ -9,8 +9,8 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 # setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/QC")
-# olivier_cocaine_genotyping <- flowcell_df %>% left_join(., WFU_OlivierOxycodone_test_df[, c("cohort", "rfid")], by = "rfid") %>% subset(!is.na(cohort)) ## add source, consider reorganization source("~/Palmer\ Lab/Bonnie\ Lin/github/PalmerLab_genotyping/CREATE/EXTRACT_SAMPLEBARCODELIBRARY.R") # should work... might not bc it doesn't have dropbox in path
-# save(WFU_OlivierOxycodone_test_df, date_time_subject_df_comp, olivieroxy_excel, rat_info_allcohort_xl_df, olivier_spleens_df, olivier_cocaine_genotyping, file = "Olivier_oxy_data.RData")
+# olivier_oxycodone_genotyping <- flowcell_df %>% left_join(., WFU_OlivierOxycodone_test_df[, c("cohort", "rfid")], by = "rfid") %>% subset(!is.na(cohort)) ## add source, consider reorganization source("~/Palmer\ Lab/Bonnie\ Lin/github/PalmerLab_genotyping/CREATE/EXTRACT_SAMPLEBARCODELIBRARY.R") # should work... might not bc it doesn't have dropbox in path
+# save(WFU_OlivierOxycodone_test_df, date_time_subject_df_comp, olivieroxy_excel, rat_info_allcohort_xl_df, olivier_spleens_df, olivier_oxycodone_genotyping, file = "Olivier_oxy_data.RData")
 load(file = "Olivier_oxy_data.RData")
 ```
 
@@ -47,7 +47,7 @@ olivieroxy_excel %>%
 
 ### \# of subjects with weight data
 
-These were extracted from the Excel sheets in *Olivier_George_U01/Rat Information/Cocaine*
+These were extracted from the Excel sheets in *Olivier_George_U01/Rat Information/Oxycodone*
 
 ```{r weights, echo = F}
 rat_info_allcohort_xl_df %>% 
@@ -60,7 +60,7 @@ rat_info_allcohort_xl_df %>%
 Spleens
 ```{r, echo = F}
 olivier_spleens_df %>% 
-  subset(experiment == "Cocaine") %>% 
+  subset(experiment == "Oxy") %>% 
   select(cohort) %>% table()
 ```
 
@@ -70,7 +70,7 @@ olivier_spleens_df %>%
 This is the number of animals we are currently genotyping. 
 
 ```{r genotyped, echo = F}
-olivier_cocaine_genotyping %>% distinct(rfid, cohort) %>% 
+olivier_oxycodone_genotyping %>% distinct(rfid, cohort) %>% 
   mutate(cohort = paste0("C", cohort)) %>% 
   select(cohort) %>% table()
 ```
