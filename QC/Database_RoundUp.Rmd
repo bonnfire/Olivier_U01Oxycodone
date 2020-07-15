@@ -10,8 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 # setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/QC")
 # olivier_cocaine_genotyping <- flowcell_df %>% left_join(., WFU_OlivierOxycodone_test_df[, c("cohort", "rfid")], by = "rfid") %>% subset(!is.na(cohort)) ## add source, consider reorganization source("~/Palmer\ Lab/Bonnie\ Lin/github/PalmerLab_genotyping/CREATE/EXTRACT_SAMPLEBARCODELIBRARY.R") # should work... might not bc it doesn't have dropbox in path
-# save(WFU_OlivierOxycodone_test_df, date_time_subject_df_comp, rat_info_allcohort_xl_df, allcohorts2, olivier_spleens_df, olivier_cocaine_genotyping, file = "Olivier_cocaine_data.RData")
-load(file = "Olivier_cocaine_data.RData")
+# save(WFU_OlivierOxycodone_test_df, date_time_subject_df_comp, olivieroxy_excel, rat_info_allcohort_xl_df, olivier_spleens_df, olivier_cocaine_genotyping, file = "Olivier_oxy_data.RData")
+load(file = "Olivier_oxy_data.RData")
 ```
 
 ## For Olivier George
@@ -37,11 +37,10 @@ date_time_subject_df_comp %>%
 
 ### \# of subjects in excel data
 
-XXX PICK UP FROM HERE 07/13
 These were extracted from the Excel sheets in *Olivier_George_U01/GWAS Self Administration Data/Oxy Data*
 
 ```{r xl-data, echo = F}
-allcohorts2 %>% 
+olivieroxy_excel %>% 
   mutate(cohort = paste0("C", as.character(parse_number(cohort)) %>% str_pad(2, "left", "0"))) %>% 
   distinct(cohort, labanimalid) %>% select(cohort) %>% table()
 ```
@@ -51,7 +50,8 @@ allcohorts2 %>%
 These were extracted from the Excel sheets in *Olivier_George_U01/Rat Information/Cocaine*
 
 ```{r weights, echo = F}
-rat_info_allcohort_xl_df %>% distinct(cohort, rat) %>% 
+rat_info_allcohort_xl_df %>% 
+  distinct(cohort, rfid) %>% 
   select(cohort) %>% table()
 ```
 
