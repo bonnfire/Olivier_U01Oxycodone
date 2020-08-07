@@ -308,7 +308,7 @@ date_time_subject_df_comp %>% add_count(labanimalid, exp) %>% subset(valid == "n
 
 
 
-
+  
 
 
 

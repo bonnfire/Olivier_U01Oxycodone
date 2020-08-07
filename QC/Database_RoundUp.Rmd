@@ -9,7 +9,7 @@ date: "`r format(Sys.time(), '%d %B, %Y')`"
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 # setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/QC")
-# olivier_oxycodone_genotyping <- flowcell_df %>% left_join(., WFU_OlivierOxycodone_test_df[, c("cohort", "rfid")], by = "rfid") %>% subset(!is.na(cohort)) ## add source, consider reorganization source("~/Palmer\ Lab/Bonnie\ Lin/github/PalmerLab_genotyping/CREATE/EXTRACT_SAMPLEBARCODELIBRARY.R") # should work... might not bc it doesn't have dropbox in path
+# olivier_oxycodone_genotyping <- flowcell_df %>% left_join(., rat_info_allcohort_xl_df[, c("cohort", "rfid")], by = "rfid")  %>% subset(!is.na(cohort)) ## add source, consider reorganization source("~/Palmer\ Lab/Bonnie\ Lin/github/PalmerLab_genotyping/CREATE/EXTRACT_SAMPLEBARCODELIBRARY.R") # should work... might not bc it doesn't have dropbox in path
 # save(WFU_OlivierOxycodone_test_df, date_time_subject_df_comp, olivieroxy_excel, rat_info_allcohort_xl_df, olivier_spleens_df, olivier_oxycodone_genotyping, file = "Olivier_oxy_data.RData")
 load(file = "Olivier_oxy_data.RData")
 ```
@@ -55,6 +55,7 @@ rat_info_allcohort_xl_df %>%
   select(cohort) %>% table()
 ```
 
++
 ### \# of IDs from tissue shipments
 
 Spleens
@@ -71,6 +72,9 @@ This is the number of animals we are currently genotyping.
 
 ```{r genotyped, echo = F}
 olivier_oxycodone_genotyping %>% distinct(rfid, cohort) %>% 
-  mutate(cohort = paste0("C", cohort)) %>% 
   select(cohort) %>% table()
 ```
+
+
+Before sending out, figure out the discrepancy here
+anti_join(olivier_oxycodone_genotyping, olivier_spleens_df, by = "rfid") %>% select(rfid)
