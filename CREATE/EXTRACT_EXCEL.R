@@ -397,13 +397,81 @@ tail_immersion_df <- lapply(tail_immersion, function(x){ # clean up the tables, 
   mutate(cohort = paste0("C", str_pad(parse_number(cohort), 2, side = "left", pad = "0"))) %>% 
   mutate(comments = NA) %>% 
   mutate(comments = replace(comments, cohort == "C04", "animals did not receive oxy for tolerance timepoint before"),
-         comments = replace(comments, cohort == "C07", "animals tested at the 12hr withdrawal timepoint had 7 days of LgA oxy SA after a 3 week break from oxy SA. Also, experimenter changed at the 12hr withdrawal timepoint"),)
+         comments = replace(comments, cohort == "C07", "animals tested at the 12hr withdrawal timepoint had 7 days of LgA oxy SA after a 3 week break from oxy SA. Also, experimenter changed at the 12hr withdrawal timepoint")) %>% 
+  mutate_at(vars(ends_with("_s")), as.numeric) %>% 
+  rename("labanimalid" = "rat_id") 
+
+tail_immersion_df <- tail_immersion_df %>% subset(grepl("[MF]\\d+", labanimalid)) 
+# basic qc 
+tail_immersion_df %>% get_dupes(labanimalid)
+# join to the rfid
+tail_immersion_df <- tail_immersion_df %>% left_join(rat_info_allcohort_xl_df %>% 
+                                  select(rat, rfid), 
+                                by = c("labanimalid" = "rat"))
+
+setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE")
+write.csv(tail_immersion_df, file = "oxycodone.xlsx", row.names = F)
 
 
 
+## Von Frey
+setwd("~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone")
+von_frey <- u01.importxlsx("GWAS Oxy Von Frey Data.xlsx")[[1]]
+
+von_frey_df <- von_frey %>% mutate_all(as.character)
+names_von_frey_df <- von_frey[1:2,] %>% t() %>% as.data.frame() %>% 
+  rename("qualifier2" = "V1", 
+         "varname" = "V2") %>% 
+  cbind(names(von_frey) %>% as.data.frame() %>% rename("qualifier1" = ".")) %>% 
+  mutate(qualifier1 = gsub("[.][.][.]\\d", NA, qualifier1)) %>% 
+  fill(qualifier1) %>%
+  mutate(qualifier = paste0(qualifier1, "_", qualifier2)) %>% 
+  mutate(qualifier = gsub("NA", NA, qualifier)) %>% 
+  fill(qualifier) %>% 
+  mutate(varname = paste0(varname, "_", qualifier)) %>% 
+  mutate(varname = gsub("_NA", "", varname))
 
 
+names(von_frey_df) <- names_von_frey_df$varname
+von_frey_df <- von_frey_df[-c(1:2), ]
+von_frey_df <- von_frey_df %>% clean_names()
 
+## XX pick up from here 08/17/2020
+  x <- x %>% mutate(row = 1:n()) # add row number column 
+  datastarts <- x$row[grep("rat id", as.character(unlist(x[,1])), ignore.case = T)] 
+  names(x) <- x[datastarts, ]
+  x <- x[-c(1:datastarts), ]
+  x <- x %>% 
+    clean_names() %>% 
+    select_if(~sum(!is.na(.)) > 0) %>% 
+    select(-matches("^x\\d+$")) %>% 
+    mutate(row = 1:n()) 
+  
+  # label naives
+  naivestarts_f <- x$row[grep("naive", as.character(unlist(x$rat_id)), ignore.case = T)]
+  naivestarts_m <- x$row[grep("naive", as.character(unlist(x$rat_id_2)), ignore.case = T)]
+  
+  x <- x %>%
+    mutate(naive = ifelse(row > naivestarts_f, "yes", "no"),
+           naive_2 = ifelse(row > naivestarts_m, "yes", "no")) # one column for females, one column for males
+  
+  # separate the males and females, join
+  males <- x %>% select(ends_with("_2"))
+  names(males) = gsub("_2", "", names(males))
+  
+  x <- x %>% select(-ends_with("_2")) %>%
+    bind_rows(males) %>% # join the males
+    select(-row) %>% 
+    mutate_at(vars(matches("bsl|oxy_on_board|x12h_wd_w_oxy")), as.numeric) %>%
+    rename_if(is.numeric, list(~paste0(., "_s"))) %>%
+    mutate_all(as.character) %>% 
+    naniar::replace_with_na_all(condition = ~.x %in% c("NA", "N/A", "na"))
+  
+  
+  return(x)
+  
+  
+}) %>% rbindlist(fill = T, idcol = "cohort")
 
 
 
