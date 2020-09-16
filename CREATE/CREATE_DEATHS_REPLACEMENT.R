@@ -4,8 +4,31 @@
 ### OXYCODONE ### 
 
 
-setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01/Rat Information")
+setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01/Rat Information/Oxycodone")
 
+ratinfo_list_deaths <- lapply(list.files(pattern = ".xlsx"), function(x){ 
+  x <- u01.importxlsx(x)[[2]] %>% 
+    clean_names() %>%
+    mutate(cohort = paste0("C", str_pad(cohort, 2, "left", "0")),
+           rfid = as.character(rfid),
+           tailmark = str_match(tail_mark, "(M|F)[[0-9]]+")[, 1],
+           naive = ifelse(grepl("Naive", tail_mark, ignore.case = T), "yes", "no"))
+  if(!lubridate::is.POSIXct(x$day_excluded)){
+    x <- x %>% 
+      mutate(datedropped = openxlsx::convertToDateTime(day_excluded)) %>% 
+      select(-day_excluded)
+  }
+  else{
+    x <- x %>% 
+      mutate(datedropped = day_excluded)
+  }
+  x <- x %>%
+    mutate_all(as.character) %>% 
+    mutate(datedropped = replace(datedropped, datedropped == "9/12/207", "2017-09-12")) %>%
+    rename("reasoning" = "reasoning") %>%
+    select(cohort, rfid, tailmark, naive, datedropped, reasoning)
+  return(x)
+}) %>% rbindlist() 
 
 
 ratinfo_list_deaths <- u01.importxlsx("Rat Information - All.xlsx")[[3]] # `Oxycodone - Deaths and Fails`
@@ -31,6 +54,12 @@ ratinfo_list_replacements_processed <- ratinfo_list_replacements %>%
          rfidreplacement = as.character(`RFID of Replaced`)) %>% 
   rename("comment" = `...5`) %>% 
   select(cohort, originalrat, replacement, rfidreplacement, comment)
+
+
+
+compromised_rats <- left_join(ratinfo_list_deaths_processed, ratinfo_list_replacements_processed %>% 
+                                select(-cohort), by = c("tailmark" = "originalrat")) %>% 
+  rename("death_comment" = "reasoning") 
 
 
 

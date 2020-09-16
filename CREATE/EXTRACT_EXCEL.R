@@ -410,7 +410,7 @@ tail_immersion_df <- tail_immersion_df %>% left_join(rat_info_allcohort_xl_df %>
                                 by = c("labanimalid" = "rat"))
 
 setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE")
-write.csv(tail_immersion_df, file = "oxycodone.xlsx", row.names = F)
+# write.csv(tail_immersion_df, file = "oxycodone.xlsx", row.names = F)
 
 
 
@@ -425,16 +425,31 @@ names_von_frey_df <- von_frey[1:2,] %>% t() %>% as.data.frame() %>%
   cbind(names(von_frey) %>% as.data.frame() %>% rename("qualifier1" = ".")) %>% 
   mutate(qualifier1 = gsub("[.][.][.]\\d", NA, qualifier1)) %>% 
   fill(qualifier1) %>%
+  mutate(qualifier1 = replace(qualifier1, grepl("Pain", varname, ignore.case = T), NA)) %>% 
   mutate(qualifier = paste0(qualifier1, "_", qualifier2)) %>% 
   mutate(qualifier = gsub("NA", NA, qualifier)) %>% 
   fill(qualifier) %>% 
+  mutate(qualifier = replace(qualifier, grepl("Pain", varname, ignore.case = T), NA)) %>% 
   mutate(varname = paste0(varname, "_", qualifier)) %>% 
   mutate(varname = gsub("_NA", "", varname))
 
 
 names(von_frey_df) <- names_von_frey_df$varname
 von_frey_df <- von_frey_df[-c(1:2), ]
-von_frey_df <- von_frey_df %>% clean_names()
+von_frey_df <- von_frey_df %>% clean_names() %>% 
+  rename("labanimalid" = "rat") %>% 
+  mutate_at(vars(-matches("labanimalid|cohort|sex|group")), as.numeric) %>% 
+  mutate(cohort = paste0("C", str_pad(cohort, 2, "left", "0")))
+
+
+von_frey_df <- von_frey_df %>% subset(grepl("[MF]\\d+", labanimalid)) 
+# basic qc 
+von_frey_df %>% get_dupes(labanimalid)
+# join to the rfid
+von_frey_df <- von_frey_df %>% left_join(rat_info_allcohort_xl_df %>% 
+                                                       select(rat, rfid), 
+                                                     by = c("labanimalid" = "rat"))
+
 
 ## XX pick up from here 08/17/2020
   x <- x %>% mutate(row = 1:n()) # add row number column 
