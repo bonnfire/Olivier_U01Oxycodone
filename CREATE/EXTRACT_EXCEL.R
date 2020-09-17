@@ -448,8 +448,11 @@ von_frey_df %>% get_dupes(labanimalid)
 # join to the rfid
 von_frey_df <- von_frey_df %>% left_join(rat_info_allcohort_xl_df %>% 
                                                        select(rat, rfid), 
-                                                     by = c("labanimalid" = "rat"))
-
+                                                     by = c("labanimalid" = "rat")) %>% 
+  left_join(compromised_rats, by = c("labanimalid", "cohort")) %>% 
+  mutate(rfid = coalesce(rfid.x, rfid.y)) %>% 
+  select(-c("rfid.x", "rfid.y"))
+von_frey_df %>% subset(is.na(rfid)) %>% select(labanimalid) %>% unlist() %>% paste0(collapse = ", ")
 
 ## XX pick up from here 08/17/2020
   x <- x %>% mutate(row = 1:n()) # add row number column 

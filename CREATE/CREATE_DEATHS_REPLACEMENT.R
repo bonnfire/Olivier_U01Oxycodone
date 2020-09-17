@@ -59,8 +59,9 @@ ratinfo_list_replacements_processed <- ratinfo_list_replacements %>%
 
 compromised_rats <- left_join(ratinfo_list_deaths_processed, ratinfo_list_replacements_processed %>% 
                                 select(-cohort), by = c("tailmark" = "originalrat")) %>% 
-  rename("death_comment" = "reasoning") 
-
+  rename("death_comment" = "reasoning") %>% 
+  mutate(labanimalid = coalesce(rfidreplacement, tailmark)) %>%  # labanimalid is the one ultimately used 
+  mutate(death_comment = gsub("^ | $", "", death_comment))
 
 
 
