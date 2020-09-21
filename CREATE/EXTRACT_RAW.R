@@ -263,7 +263,7 @@ date_time_subject_no0$labanimalid %>% table()
 ## before making the date_time_subject_df_comp, fix the exps on some lines from date_time_subject_no0
 date_time_subject_no0 <- date_time_subject_no0 %>% 
   mutate(start_date = as.Date(start_datetime) %>% as.character,
-         start_time = format(ymd_hms(start_datetime), "%H:%M:%S") %>% chron::chron(times = .) %>% as.character) %>% 
+         start_time = format(lubridate::ymd_hms(start_datetime), "%H:%M:%S") %>% chron::chron(times = .) %>% as.character) %>% 
   mutate(exp = replace(exp, filename == "MED1110C03HSOXYLGA17"&start_date=="2019-02-28", "LGA18"),
        exp = replace(exp, grepl("BSB273[BCDE]C04HSOXYLGA15", filename)&start_date=="2019-07-26", "LGA16"),
        exp = replace(exp, grepl("BSB273[BC]C05HSOXYLGA11", filename)&start_date=="2019-10-15", "LGA12")) 
@@ -282,6 +282,7 @@ date_time_subject_df_comp <-
                                 ifelse(grepl("PR", exp) & stringr::str_detect(end_datetime, excel_date) & experiment_duration > 55 ,"yes", 
                                 "no")))))) %>% ## Using start date ## Got these numbers from Lauren on 3/16/2020
   ungroup() 
+  
 
 # see the distribution of valid cases
 date_time_subject_df_comp %>% select(exp, valid, cohort) %>% table()
@@ -336,6 +337,7 @@ sha_rewards_new <-  lapply(sha_new_files, read_rewards_new) %>% rbindlist() %>% 
   bind_cols(sha_subjects_new) %>% 
   separate(labanimalid, into = c("labanimalid", "cohort", "exp", "filename", "date", "time", "box"), sep = "_") %>% 
   mutate(date = lubridate::mdy(date), time = chron::chron(times = time)) %>% 
+  mutate(room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA)) %>% 
   mutate_at(vars("date", "time"), as.character)
 
 
@@ -365,6 +367,7 @@ sha_rewards_new %>% get_dupes(labanimalid, exp, cohort)
 setDT(sha_rewards_new)             # convert to data.table without copy
 sha_rewards_new[setDT(sha_rewards_new %>% dplyr::filter(!grepl("[MF]", labanimalid)) %>% # this captures all "NA" cases as checked with mutate_at(vars(labanimalid), na_if, "NA") %>% dplyr::filter(is.na(labanimalid))
                         left_join(., date_time_subject_df_comp %>% 
+                                    subset()
                                     select(labanimalid, cohort, exp, filename, start_date, start_time) %>% 
                                     rename("date" = "start_date", "time" = "start_time") %>% 
                                     mutate(time = as.character(time)), 

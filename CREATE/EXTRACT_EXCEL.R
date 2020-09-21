@@ -244,7 +244,7 @@ dates <- grep("^\\d+", names(selfadmin), value = T) # use these columns to make 
 dates <- as.character(as.POSIXct(as.numeric(dates) * (60*60*24), origin="1899-12-30", tz="UTC", format="%Y-%m-%d")) # convert Excel character into dates
 
 setnames(selfadmin, toupper(as.character(selfadmin[1,]) )) # now that dates are moved into separate vector, remove from the column names 
-setnames(selfadmin,  mgsub::mgsub(names(selfadmin), c("PR2", "^T.+1$", "^T.+2$", "^T.+3$", "^T.+4$", "SHA.*?([0-9]{2})$", "LGA.*?([0-9]{2})$"), c("PR02", "PR03_T01", "PR04_T02", "PR05_T03", "PR06_T04", "SHA\\1", "LGA\\1")))
+setnames(selfadmin,  mgsub::mgsub(names(selfadmin), c("PR1", "PR2", "^T.+1$", "^T.+2$", "^T.+3$", "^T.+4$", "SHA.*?([0-9]{2})$", "LGA.*?([0-9]{2})$"), c("PR01", "PR02", "PR03_T01", "PR04_T02", "PR05_T03", "PR06_T04", "SHA\\1", "LGA\\1")))
 names(selfadmin)[1:2] <- c("RAT", "RFID")
 selfadmin <- selfadmin[-1,]
 selfadmin <- remove_empty(selfadmin, "cols") # janitor::remove_empty_cols() deprecated
@@ -286,7 +286,7 @@ dates <- grep("^\\d+", names(selfadmin), value = T) # use these columns to make 
 dates <- as.character(as.POSIXct(as.numeric(dates) * (60*60*24), origin="1899-12-30", tz="UTC", format="%Y-%m-%d")) # convert Excel character into dates
 
 setnames(selfadmin, toupper(as.character(selfadmin[1,]) )) # now that dates are moved into separate vector, remove from the column names 
-setnames(selfadmin,  mgsub::mgsub(names(selfadmin), c("PR2", "^T.+1$", "^T.+2$", "^T.+3$", "^T.+4$", "SHA.*?([0-9]{2})$", "LGA.*?([0-9]{2})$"), c("PR02", "PR03_T01", "PR04_T02", "PR05_T03", "PR06_T04", "SHA\\1", "LGA\\1")))
+setnames(selfadmin,  mgsub::mgsub(names(selfadmin), c("PR1", "PR2", "^T.+1$", "^T.+2$", "^T.+3$", "^T.+4$", "SHA.*?([0-9]{2})$", "LGA.*?([0-9]{2})$"), c("PR01", "PR02", "PR03_T01", "PR04_T02", "PR05_T03", "PR06_T04", "SHA\\1", "LGA\\1")))
 names(selfadmin)[1:2] <- c("RAT", "RFID")
 selfadmin <- selfadmin[-1,]
 selfadmin <- remove_empty(selfadmin, "cols") # janitor::remove_empty_cols() deprecated
@@ -442,17 +442,31 @@ von_frey_df <- von_frey_df %>% clean_names() %>%
   mutate(cohort = paste0("C", str_pad(cohort, 2, "left", "0")))
 
 
-von_frey_df <- von_frey_df %>% subset(grepl("[MF]\\d+", labanimalid)) 
+von_frey_df <- von_frey_df %>% subset(grepl("[MF]\\d+", labanimalid)) # found 0 cases
 # basic qc 
-von_frey_df %>% get_dupes(labanimalid)
+von_frey_df %>% get_dupes(labanimalid) # found 0 cases
 # join to the rfid
 von_frey_df <- von_frey_df %>% left_join(rat_info_allcohort_xl_df %>% 
-                                                       select(rat, rfid), 
-                                                     by = c("labanimalid" = "rat")) %>% 
-  left_join(compromised_rats, by = c("labanimalid", "cohort")) %>% 
+                                           select(rat, rfid), 
+                                         by = c("labanimalid" = "rat")) %>% # 14 that are not in this mapping file
+  left_join(compromised_rats[, c("labanimalid", "rfid")], by = c("labanimalid")) %>% # find the 
   mutate(rfid = coalesce(rfid.x, rfid.y)) %>% 
-  select(-c("rfid.x", "rfid.y"))
+  select(-c("rfid.x", "rfid.y")) # 6 left without rfid's, missing from mapping files (no naive data from cohort 4)
+
+
+setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE")
+# C04_naive_wfu <- read_xlsx("c04 naive rat info.xlsx") # got the information from olivier lab, 
+## fix the %>% 
+  mutate(rfid = replace(rfid, labanimalid == "F433", "933000320047269"),
+         rfid = replace(rfid, labanimalid == "F434", "933000320047258"),
+         rfid = replace(rfid, labanimalid == "M482", "933000320047272"),
+         rfid = replace(rfid, labanimalid == "M483", "933000320047499"),
+         rfid = replace(rfid, labanimalid == "M484", "933000320047463"),
+         rfid = replace(rfid, labanimalid == "M485", "933000320047460"))
+
 von_frey_df %>% subset(is.na(rfid)) %>% select(labanimalid) %>% unlist() %>% paste0(collapse = ", ")
+
+
 
 ## XX pick up from here 08/17/2020
   x <- x %>% mutate(row = 1:n()) # add row number column 

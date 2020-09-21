@@ -1,5 +1,17 @@
 # create the raw and excel compare df's 
 
+## create phenotypes long and wide
+
+
+
+
+
+
+
+
+
+
+
 ## RAW
 # NEW and OLD and all exps combine 
 rewards <- rbindlist(
