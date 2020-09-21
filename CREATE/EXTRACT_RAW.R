@@ -367,7 +367,6 @@ sha_rewards_new %>% get_dupes(labanimalid, exp, cohort)
 setDT(sha_rewards_new)             # convert to data.table without copy
 sha_rewards_new[setDT(sha_rewards_new %>% dplyr::filter(!grepl("[MF]", labanimalid)) %>% # this captures all "NA" cases as checked with mutate_at(vars(labanimalid), na_if, "NA") %>% dplyr::filter(is.na(labanimalid))
                         left_join(., date_time_subject_df_comp %>% 
-                                    subset()
                                     select(labanimalid, cohort, exp, filename, start_date, start_time) %>% 
                                     rename("date" = "start_date", "time" = "start_time") %>% 
                                     mutate(time = as.character(time)), 
@@ -377,6 +376,16 @@ setDF(sha_rewards_new)
 sha_rewards_new %<>% 
   mutate_at(vars(rewards), as.numeric)
 
+# add valid columns
+sha_rewards_new_valid <- sha_rewards_new %>% 
+  left_join(., date_time_subject_df_comp %>% 
+              select(filename, valid, start_date, start_time) %>% 
+              rename("date" = "start_date", "time" = "start_time"),
+            by = c("filename", "date", "time")) %>% 
+  distinct() %>% 
+  subset(valid == "yes")
+
+sha_rewards_new_valid %>% get_dupes(labanimalid, exp)
 
 
 ###### OLD FILES ##############
@@ -430,9 +439,11 @@ setwd("~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS")
 
 ###### NEW FILES ##############
 # label data with... 
-lga_new_files <- grep(grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*txt", inv = T, value = T), pattern = ".*LGA", value = T) # 370 files
+lga_new_files <- grep(grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*txt", inv = T, value = T), pattern = ".*LGA", value = T) # 392 files
 
-lga_subjects_new <- process_subjects_new(lga_new_files) %>% separate(labanimalid, c("row", "labanimalid"), sep = "_", extra = "merge") %>% 
+lga_subjects_new <- process_subjects_new(lga_new_files) %>% 
+  subset(!grepl("C:\\\\MED-PC", labanimalid)) %>%  #  Add this line to correct this error message from file BSB273CC07HSOXYLGA16 -- from  Item 2 has 95 rows but longest item has 111; recycled with remainder.
+  separate(labanimalid, c("row", "labanimalid"), sep = "_", extra = "merge") %>% 
   arrange(filename, as.numeric(row)) %>% select(-c(row, filename))
 
 # extract data with 'read_rewards_new' function from SHA
@@ -443,19 +454,11 @@ lga_rewards_new <- lapply(lga_new_files, read_rewards_new) %>% rbindlist() %>% s
   mutate(date = as.character(date), time = as.character(time))
   
 
-## before bindng to date_time_subject_df_comp to make sure that the exp matches
+## before binding to date_time_subject_df_comp to make sure that the exp matches
 lga_rewards_new <- lga_rewards_new %>% 
   mutate(exp = replace(exp, filename == "MED1110C03HSOXYLGA17"&date=="2019-02-28", "LGA18"),
          exp = replace(exp, grepl("BSB273[BCDE]C04HSOXYLGA15", filename)&date=="2019-07-26", "LGA16"),
          exp = replace(exp, grepl("BSB273[BC]C05HSOXYLGA11", filename)&date=="2019-10-15", "LGA12")) 
-
-# lga_rewards_new <- lga_rewards_new %>%
-#   mutate(date = as.character(date), time = as.character(time)) %>% 
-#   left_join(., date_time_subject_df_comp %>%
-#               select(labanimalid, cohort, exp, filename, valid, start_date, start_time) %>%
-#               rename("date" = "start_date", "time" = "start_time"),
-#             by = c("cohort", "exp", "filename", "date", "time")) %>% get_dupes(labanimalid, exp)
-
 
 ## deal with missing subjects and give valid
 setDT(lga_rewards_new)             # convert to data.table without copy
@@ -476,6 +479,8 @@ lga_rewards_new_valid <- lga_rewards_new %>%
             by = c("filename", "date", "time")) %>% 
   distinct() %>% 
   subset(valid == "yes") # Lauren says that we do not need to include the is.na valid cases are from c03 lga19 and c04 lga24 that don't exist in the excel sheets 
+## 09/21/2020 -- none returned 
+
 
 lga_rewards_new_valid <- lga_rewards_new_valid %>% 
   mutate(labanimalid = replace(labanimalid, filename == "BSB273CC04HSOXYLGA12"&box=="16", "M452"), # 5/22 "M452 should be in box 16 for that file" - Lani
