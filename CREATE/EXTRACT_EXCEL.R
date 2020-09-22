@@ -447,7 +447,7 @@ von_frey_df <- von_frey_df %>% subset(grepl("[MF]\\d+", labanimalid)) # found 0 
 # basic qc 
 von_frey_df %>% get_dupes(labanimalid) # found 0 cases
 # join to the rfid
-von_frey_df <- von_frey_df %>% left_join(rat_info_allcohort_xl_df %>% 
+von_frey_df_rfid <- von_frey_df %>% left_join(rat_info_allcohort_xl_df %>% 
                                            select(rat, rfid), 
                                          by = c("labanimalid" = "rat")) %>% # 14 that are not in this mapping file
   left_join(compromised_rats[, c("labanimalid", "rfid")], by = c("labanimalid")) %>% # find the 
@@ -456,16 +456,16 @@ von_frey_df <- von_frey_df %>% left_join(rat_info_allcohort_xl_df %>%
 
 
 setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE")
-# C04_naive_wfu <- read_xlsx("c04 naive rat info.xlsx") # got the information from olivier lab, 
-## fix the %>% 
-  mutate(rfid = replace(rfid, labanimalid == "F433", "933000320047269"),
-         rfid = replace(rfid, labanimalid == "F434", "933000320047258"),
-         rfid = replace(rfid, labanimalid == "M482", "933000320047272"),
-         rfid = replace(rfid, labanimalid == "M483", "933000320047499"),
-         rfid = replace(rfid, labanimalid == "M484", "933000320047463"),
-         rfid = replace(rfid, labanimalid == "M485", "933000320047460"))
+C04_naive_wfu <- read_xlsx("c04 naive rat info.xlsx") %>%  # got the information from olivier lab (sent them von_frey_df %>% subset(is.na(rfid)) %>% select(labanimalid) %>% unlist() %>% paste0(collapse = ", ")), *MASTER TABLES FOR WFU COHORT 4 OXY NAIVE (COMES FROM OXY AND COCAINE SCRUBS)
+  clean_names %>% 
+  rename("labanimalid" = "georgeid") %>% 
+  mutate(labanimalid = toupper(labanimalid)) 
+  
 
-von_frey_df %>% subset(is.na(rfid)) %>% select(labanimalid) %>% unlist() %>% paste0(collapse = ", ")
+von_frey_df_rfid <- von_frey_df_rfid %>% 
+  left_join(C04_naive_wfu[, c("labanimalid", "rfid")], by = "labanimalid")  %>% 
+  mutate(rfid = coalesce(rfid.x, rfid.y)) %>% 
+  select(-c("rfid.x", "rfid.y"))
 
 
 
