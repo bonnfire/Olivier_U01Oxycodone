@@ -2,10 +2,26 @@
 
 ## create phenotypes long and wide
 
+oxy_xl_sha_df <- bind_rows(sha_rewards_new, sha_rewards_old) %>%
+  select(cohort, labanimalid, exp, rewards, filename) %>% 
+  rename("rewards_raw" = "rewards") %>% 
+  mutate(exp = tolower(exp)) %>% 
+  left_join(olivieroxy_excel %>% select(matches("cohort|labanimalid|rfid|^sha\\d")) %>% 
+              distinct() %>% 
+              gather("exp", "rewards_xl", -cohort, -rfid, -labanimalid),
+            by = c("cohort", "labanimalid", "exp")) %>% 
+  mutate_at(vars(matches("^rewards")), as.numeric) %>% 
+  mutate(rewards_QC_diff = rewards_xl - rewards_raw,
+         rewards_QC = ifelse(rewards_QC_diff == 0, "pass", "fail"))
 
-
-
-
+setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE")
+oxy_xl_sha_df %>% 
+  subset(rewards_QC == "fail") %>% 
+  mutate(sex = str_extract(labanimalid, "[MF]")) %>% 
+  spread(exp, rewards_xl) %>% 
+  mutate(labanimalid_num = parse_number(labanimalid)) %>% 
+  arrange(cohort, sex, labanimalid_num) %>% select(-labanimalid_num) %>% 
+  openxlsx::write.xlsx(file = "oxy_qc_sha.xlsx")
 
 
 
@@ -16,7 +32,7 @@
 # NEW and OLD and all exps combine 
 rewards <- rbindlist(
   list(
-    "new_sha" = sha_rewards_new,
+    "new_sha" = sha_rewards_new_valid,
     "old_sha" = sha_rewards_old,
     "new_lga" = lga_rewards_new_valid,
     "old_lga" = lga_rewards_old,
@@ -25,7 +41,7 @@ rewards <- rbindlist(
   ),
   idcol = "directory",
   fill = T
-) ## 6876 observations from C01-7, no 2
+) ## 3166 observations from C01-7, no 2
 
 
 ######### JOIN TO WFU DATABASE 

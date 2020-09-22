@@ -526,7 +526,8 @@ lga_rewards_old <- lga_rewards_old %>%
   mutate(labanimalid = replace(labanimalid, filename=="./C01/Old/LGA/K1C01HSOXYLGA01-20180815.txt"&computer == "K1", "F122")) %>% ## noted in excel for C01 OXY "Rat F122 is F128 on the K1 Data file"
   add_count(labanimalid, exp) %>% 
   dplyr::filter(n==1|(n!=1 & grepl("-2.txt", filename))) %>% 
-  select(-n)
+  select(-n) %>% 
+  mutate_all(as.character)
   
 lga_rewards_old %>% get_dupes(labanimalid, exp) 
 
@@ -573,7 +574,8 @@ pr_rewards_new <- left_join(pr_rewards_new %>% mutate(start_datetime = paste(dat
   mutate(rewards = replace(rewards, cohort == "C04"&exp == "PR02", NA)) %>% # "it was noted in the lab notebook that this data did not record properly, even though it was extracted from the computers; But Giordano fixed this issue for the cohorts after C04" - Lani (3/31)
   select(-c(setdiff(names(.), names(pr_rewards_new)))) %>% 
   distinct() %>% #1232 gets rid of many cases from cohort 4 and 5 of 0 rewards 
-  mutate(rewards = as.numeric(rewards))
+  mutate(rewards = as.numeric(rewards)) %>% 
+  mutate(as.character)
 
 # qc with...
 pr_rewards_new %>% get_dupes(labanimalid, exp)
@@ -624,4 +626,5 @@ pr_rewards_old %>% get_dupes(labanimalid, exp)
 pr_rewards_old %>% add_count(labanimalid, cohort,exp) %>% subset(n != 1)
 
 pr_rewards_old <- pr_rewards_old %>% 
-  dplyr::filter(!(labanimalid=="F120"&rewards=="0"&exp=="PR05_T03"))
+  dplyr::filter(!(labanimalid=="F120"&rewards=="0"&exp=="PR05_T03")) %>% 
+  mutate_all(as.character)

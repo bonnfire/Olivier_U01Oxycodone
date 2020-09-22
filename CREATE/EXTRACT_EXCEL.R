@@ -24,7 +24,6 @@ olivieroxy_excel_dateslong <- olivieroxy_excel %>% select(matches("date|cohort")
   subset(!is.na(excel_date)) %>% 
   mutate(excel_date = replace(excel_date, cohort == "C03" & exp == "LGA04", "2019-02-02"))## Based on Brent's comment on Slack 3/17/2020 "But for LGA04, the date seems to be incorrect on the data sheet. The date the experiment ended should be 2/2/2019, not 2/3/2019. " 
 
-
 # run this line after running all sections after cohort1
 
 ## to extract the mapping excels 
@@ -228,7 +227,9 @@ dates <- selfadmin$DATE %>% na.omit
 nm <- names(selfadmin_rewards_cohort5)[-c(1:2)] # make date columns for this vector of exp names  ## NOT MISSING THE RFID COLUMN
 nm1 <- paste("date", nm, sep = "_") # make these date columns
 selfadmin_rewards_cohort5[ , ( nm1 ) := lapply( dates, function(x) rep(x, each = .N) ) ] # make the date columns 
-
+setDF(selfadmin_rewards_cohort5)
+selfadmin_rewards_cohort5 <- selfadmin_rewards_cohort5 %>% 
+  mutate(measurement = "REWARDS")
 ########################
 # COHORT 6
 ########################
