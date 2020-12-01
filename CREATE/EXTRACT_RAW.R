@@ -628,3 +628,177 @@ pr_rewards_old %>% add_count(labanimalid, cohort,exp) %>% subset(n != 1)
 pr_rewards_old <- pr_rewards_old %>% 
   dplyr::filter(!(labanimalid=="F120"&rewards=="0"&exp=="PR05_T03")) %>% 
   mutate_all(as.character)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Extract timeout presses
+
+#####
+## lga
+#####
+
+lga_c01_07_files <- list.files(path = "~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS", recursive = T, full.names = T) %>% 
+  grep("LGA", ., value = T)
+
+
+lga_c01_07_timeout <- lapply(lga_c01_07_files, function(x){
+  if(grepl("Old", x)){ # process if directory is old
+    df <- fread(paste0("awk '/^RatNumber/{flag=1;next}/^ProgramName/{flag=0}flag' ", "'", x, "'"), fill = T, header = F) 
+    df$filename = x
+    df$box = fread(paste0("awk '/^BoxNumber/{flag=1;next}/^Sessionlength/{flag=0}flag' ", "'", x, "'"), fill = T, header = F)  
+    df$to_active_presses = fread(paste0("awk '/^TotalTOResponses/{flag=1;next}/^TotalRspInAct/{flag=0}flag' ", "'", x, "'"), fill = T, header = F)
+  }
+  
+  if(grepl("New", x)){ # process if directory is new
+    df <- fread(paste0("awk '/Subject:/{print NR \"_\" $2}' ", "'", x, "'"), fill = T, header = F)
+    df$filename = x 
+    df$rewards = fread(paste0("awk '/B:/{print $2}' ", "'", x, "'"), fill = T, header = F)
+    df$presses = fread(paste0("awk '/G:/{print $2}' ", "'", x, "'"), fill = T, header = F)
+    df$box = fread(paste0("awk '/Box:/{print $2}' ", "'", x, "'"), fill = T, header = F) 
+    df$to_active_presses =  df$presses -  df$rewards
+    df <- df[, c("V1", "filename", "box", "to_active_presses")]
+  }
+  
+  return(df)
+  
+})
+
+# use to try for old  lga_c01_07_files[c(37:42, 113:118)]
+# use to try for new  lga_c01_07_files[c(1:6, 469:474)]
+# use to try for old and new  lga_c01_07_files[c(37:42, 113:118, 1:6, 469:474)]
+
+lga_c01_07_timeout_df <- lga_c01_07_timeout %>% rbindlist() %>% 
+  rename("labanimalid" = "V1") %>% 
+  mutate(labanimalid = str_extract(toupper(labanimalid), "[MF]\\d+"),
+         session = str_extract(toupper(filename), "LGA\\d+"),
+         cohort = str_extract(toupper(filename), "/C\\d+/") %>% gsub("/", "", .),
+         sex = str_extract(toupper(labanimalid), "[MF]"),
+         room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename) %>% gsub(".*LGA/", "", .), NA)
+  ) %>% 
+  select(cohort, labanimalid, sex, session, box, room, to_active_presses, filename) 
+
+lga_c01_07_timeout_trials1_14 <- lga_c01_07_timeout_df %>% 
+  subset(parse_number(session) < 15) %>% 
+  mutate(box = as.character(box))
+
+# fix these 
+lga_c01_07_timeout_trials1_14 %>% get_dupes(labanimalid, session)
+# lga_c01_07_timeout_trials1_14_join %>% get_dupes(labanimalid, session) %>% naniar::vis_miss
+lga_c01_07_timeout_trials1_14_distinct <- lga_c01_07_timeout_trials1_14 %>% 
+  select(cohort, labanimalid, sex, session, box, room, to_active_presses) %>% 
+  distinct() %>% 
+  left_join(lga_c01_07_timeout_trials1_14 %>% # join to a dataframe that drops the filename and creates drop tag
+              select(cohort, labanimalid, sex, session, box, room, to_active_presses) %>% 
+              distinct() %>% 
+              get_dupes(labanimalid, session) %>% 
+              group_by(labanimalid, session, .drop = F) %>% 
+              mutate(nzero = sum(to_active_presses)) %>% 
+              subset(to_active_presses != nzero&to_active_presses == 0) %>% ungroup() %>% mutate(drop = "drop") %>% 
+              select(labanimalid, cohort, session, to_active_presses, drop), by = c("labanimalid", "cohort", "session", "to_active_presses")) %>% 
+  subset(is.na(drop))
+
+lga_c01_07_timeout_trials1_14_brent <- lga_c01_07_timeout_trials1_14_distinct %>% 
+  left_join(., lga_c01_07_timeout_trials1_14_distinct %>% get_dupes(labanimalid, session) %>% select(labanimalid, cohort, session, to_active_presses, dupe_count), by = c("labanimalid", "cohort", "session", "to_active_presses")) %>% 
+  rename("need_check"="dupe_count") %>% 
+  mutate(need_check = ifelse(!is.na(need_check), "check", NA)) %>% 
+  select(cohort, labanimalid, sex, session, box, room, to_active_presses, need_check) %>% 
+  mutate(labanimalid_num = parse_number(labanimalid)) %>% 
+  arrange(cohort, sex, labanimalid_num, session) %>% 
+  select(-labanimalid_num)
+
+
+openxlsx::write.xlsx(lga_c01_07_timeout_trials1_14_brent, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses.xlsx")
+
+# use brent's file to correct 
+
+
+
+
+
+
+#####
+## sha
+#####
+sha_c01_07_files <- list.files(path = "~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS", recursive = T, full.names = T) %>% 
+  grep("SHA", ., value = T)
+
+
+sha_c01_07_timeout <- lapply(sha_c01_07_files, function(x){
+  if(grepl("Old", x)){ # process if directory is old
+    df <- fread(paste0("awk '/^RatNumber/{flag=1;next}/^ProgramName/{flag=0}flag' ", "'", x, "'"), fill = T, header = F) 
+    df$filename = x
+    df$box = fread(paste0("awk '/^BoxNumber/{flag=1;next}/^Sessionlength/{flag=0}flag' ", "'", x, "'"), fill = T, header = F)  
+    df$to_active_presses = fread(paste0("awk '/^TotalTOResponses/{flag=1;next}/^TotalRspInAct/{flag=0}flag' ", "'", x, "'"), fill = T, header = F)
+  }
+  
+  if(grepl("New", x)){ # process if directory is new
+    df <- fread(paste0("awk '/Subject:/{print NR \"_\" $2}' ", "'", x, "'"), fill = T, header = F)
+    df$filename = x 
+    df$rewards = fread(paste0("awk '/W:/{flag=1;next}/5:/{flag=0}flag' ", "'", x, "' | awk '/0:/{print $2}'"), header = F, fill = T)
+    df$presses = fread(paste0("awk '/R:/{flag=1;next}/5:/{flag=0}flag' ", "'", x, "' | awk '/0:/{print $2}'"), header = F, fill = T)
+    df$box = fread(paste0("awk '/Box:/{print $2}' ", "'", x, "'"), fill = T, header = F) 
+    df$to_active_presses =  df$presses -  df$rewards
+    df <- df[, c("V1", "filename", "box", "to_active_presses")]
+  }
+  
+  return(df)
+  
+})
+
+sha_c01_07_timeout_df <- sha_c01_07_timeout %>% rbindlist() %>% 
+  rename("labanimalid" = "V1") %>% 
+  mutate(labanimalid = str_extract(toupper(labanimalid), "[MF]\\d+"),
+         session = str_extract(toupper(filename), "SHA\\d+"),
+         cohort = str_extract(toupper(filename), "/C\\d+/") %>% gsub("/", "", .),
+         sex = str_extract(toupper(labanimalid), "[MF]"),
+         room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename) %>% gsub(".*SHA/", "", .), NA)
+  ) %>% 
+  mutate(box = as.character(box)) %>% 
+  select(cohort, labanimalid, sex, session, room, box, to_active_presses, filename)
+
+# check sex, session, and room
+sha_c01_07_timeout_df %>% select(sex, session, room) %>% sapply(table, exclude = NULL)
+
+# fix these cases
+sha_c01_07_timeout_df %>% get_dupes(labanimalid, session)
+
+sha_c01_07_timeout_distinct <- sha_c01_07_timeout_df %>% 
+  select(cohort, labanimalid, sex, session, box, room, to_active_presses) %>% 
+  distinct() %>% 
+  left_join(sha_c01_07_timeout_df %>% 
+              select(cohort, labanimalid, sex, session, box, room, to_active_presses) %>% 
+              distinct() %>% 
+              get_dupes(labanimalid, session) %>% 
+              group_by(labanimalid, session, .drop = F) %>% 
+              mutate(nzero = sum(to_active_presses)) %>% 
+              subset(to_active_presses != nzero&to_active_presses == 0) %>% ungroup() %>% mutate(drop = "drop") %>% 
+              select(labanimalid, cohort, session, to_active_presses, drop), by = c("labanimalid", "cohort", "session", "to_active_presses")) %>% 
+  subset(is.na(drop))
+
+sha_c01_07_timeout_brent <- sha_c01_07_timeout_distinct %>% 
+  left_join(., sha_c01_07_timeout_distinct %>% get_dupes(labanimalid, session) %>% select(labanimalid, cohort, session, to_active_presses, dupe_count), by = c("labanimalid", "cohort", "session", "to_active_presses")) %>% 
+  rename("need_check"="dupe_count") %>% 
+  mutate(need_check = ifelse(!is.na(need_check), "check", NA)) %>% 
+  select(cohort, labanimalid, sex, session, box, room, to_active_presses, need_check) %>% 
+  mutate(labanimalid_num = parse_number(labanimalid)) %>% 
+  arrange(cohort, sex, labanimalid_num, session) %>% 
+  select(-labanimalid_num) %>% 
+  mutate(need_check = replace(need_check, is.na(labanimalid), "check"))
+
+openxlsx::write.xlsx(sha_c01_07_timeout_brent, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_sha_to_presses.xlsx")
+
+
+
