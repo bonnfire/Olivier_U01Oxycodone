@@ -745,6 +745,26 @@ lga_c01_07_timeout_brent_decision_dev <- lga_c01_07_timeout_brent_decision %>%
 
 openxlsx::write.xlsx(lga_c01_07_timeout_brent_decision_dev, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses_wide_dev.xlsx")
 
+lga_c01_07_timeout_final <- openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses_wide_dev_BB.xlsx") %>% 
+  clean_names() %>% 
+  mutate_all(as.character) %>% 
+  select(-matches("mean$|_dev$")) %>% 
+  gather("session", "to_active_presses", -cohort, -labanimalid, -sex, -omit) %>% 
+  mutate(session = toupper(session)) %>% 
+  rowwise() %>% 
+  mutate(omit = gsub("; ", "|", omit), 
+         to_active_presses = replace(to_active_presses, grepl(omit, session), NA)) %>% 
+  ungroup() %>%  
+  select(-omit) %>%
+  spread(session, to_active_presses) %>% 
+  mutate(labanimalid_num = parse_number(labanimalid)) %>% 
+  arrange(cohort, sex, labanimalid_num) %>% 
+  select(-labanimalid_num) 
+
+openxlsx::write.xlsx(lga_c01_07_timeout_final, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses_final.xlsx")
+
+
+
 
 
 
@@ -836,4 +856,23 @@ sha_c01_07_timeout_brent_decision_dev <- sha_c01_07_timeout_brent_decision %>%
   select(-labanimalid_num)
 
 openxlsx::write.xlsx(sha_c01_07_timeout_brent_decision_dev, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_sha_to_presses_wide_dev.xlsx")
+
+sha_c01_07_timeout_final <- openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_sha_to_presses_wide_dev_BB.xlsx") %>% 
+  clean_names() %>% 
+  mutate_all(as.character) %>% 
+  select(-matches("mean$|_dev$")) %>% 
+  gather("session", "to_active_presses", -cohort, -labanimalid, -sex, -omit) %>% 
+  mutate(session = toupper(session)) %>% 
+  rowwise() %>% 
+  mutate(omit = gsub("; ", "|", omit), 
+         to_active_presses = replace(to_active_presses, grepl(omit, session), NA)) %>% 
+  ungroup() %>%  
+  select(-omit) %>%
+  spread(session, to_active_presses) %>% 
+  mutate(labanimalid_num = parse_number(labanimalid)) %>% 
+  arrange(cohort, sex, labanimalid_num) %>% 
+  select(-labanimalid_num) 
+
+openxlsx::write.xlsx(sha_c01_07_timeout_final, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_sha_to_presses_final.xlsx")
+
 
