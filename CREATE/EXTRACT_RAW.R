@@ -800,5 +800,19 @@ sha_c01_07_timeout_brent <- sha_c01_07_timeout_distinct %>%
 
 openxlsx::write.xlsx(sha_c01_07_timeout_brent, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_sha_to_presses.xlsx")
 
+# use brent's file to correct 
+sha_c01_07_timeout_brent_decision <- openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_sha_to_presses_BB.xlsx") %>% 
+  clean_names() %>% 
+  mutate_all(as.character) %>% 
+  subset(is.na(decision)|decision=="KEEP") 
 
+# write the data in wide form and calculate mean and deviations 
+sha_c01_07_timeout_brent_decision_dev <- sha_c01_07_timeout_brent_decision %>% 
+  select(-need_check, -decision, -notes) %>% 
+  spread(session, to_active_presses) %>% mutate_at(vars(matches("^SHA")), as.numeric) %>% mutate(mean = rowMeans(select(., matches("^SHA")), na.rm = T)) %>% mutate_at(vars(matches("^SHA")), list(dev = ~round((.-mean)^2))) %>% 
+  mutate(labanimalid_num = parse_number(labanimalid)) %>% 
+  arrange(cohort, sex, labanimalid_num) %>% 
+  select(-labanimalid_num)
+
+openxlsx::write.xlsx(sha_c01_07_timeout_brent_decision_dev, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_sha_to_presses_wide_dev.xlsx")
 
