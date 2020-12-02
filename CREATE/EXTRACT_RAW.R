@@ -723,6 +723,27 @@ lga_c01_07_timeout_trials1_14_brent <- lga_c01_07_timeout_trials1_14_distinct %>
 openxlsx::write.xlsx(lga_c01_07_timeout_trials1_14_brent, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses.xlsx")
 
 # use brent's file to correct 
+lga_c01_07_timeout_brent_decision <- openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses_BB.xlsx") %>% 
+  clean_names() %>% 
+  mutate_all(as.character) %>% 
+  subset(is.na(decision)|decision=="KEEP") 
+
+# write the data in wide form and calculate mean and deviations 
+lga_c01_07_timeout_brent_decision_dev <- lga_c01_07_timeout_brent_decision %>% 
+  left_join(lga_c01_07_timeout_brent_decision %>% 
+              subset(cohort == "C07"&session == "LGA08"&room=="BSB273D") %>% 
+              select(cohort, labanimalid, box, room), by = c("cohort", "box", "room")) %>% 
+  rename("labanimalid" = "labanimalid.x") %>% 
+  mutate(labanimalid = coalesce(labanimalid, labanimalid.y)) %>% 
+  select(-labanimalid.y) %>% 
+  select(-need_check, -decision, -notes, -box, -room) %>% 
+  mutate(sex = str_extract(labanimalid, "[MF]")) %>% 
+  spread(session, to_active_presses) %>% mutate_at(vars(matches("^LGA")), as.numeric) %>% mutate(mean = rowMeans(select(., matches("^LGA")), na.rm = T)) %>% mutate_at(vars(matches("^LGA")), list(dev = ~round((.-mean)^2))) %>% 
+  mutate(labanimalid_num = parse_number(labanimalid)) %>% 
+  arrange(cohort, sex, labanimalid_num) %>% 
+  select(-labanimalid_num)
+
+openxlsx::write.xlsx(lga_c01_07_timeout_brent_decision_dev, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses_wide_dev.xlsx")
 
 
 
