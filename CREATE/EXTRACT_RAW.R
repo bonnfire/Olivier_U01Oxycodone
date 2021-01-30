@@ -10,7 +10,7 @@ setwd("~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS")
 process_subjects_new <- function(x){
   
   read_subjects_new <- function(x){
-    subjects <- fread(paste0("awk '/Subject/{print NR \"_\" $2}' ", " '", x, "'"),fill = T,header=F)
+    subjects <- fread(paste0("awk '/Subject:/{print NR \"_\" $2}' ", " '", x, "'"),fill = T,header=F)
     subjects$filename <- x
     return(subjects)
   }
@@ -24,7 +24,7 @@ process_subjects_new <- function(x){
   read_meta_box_new <- function(x) {
     box_new <-
       fread(
-        paste0("awk '/Box/{print $2}' ", "'", x, "'"),
+        paste0("awk '/Box:/{print $2}' ", "'", x, "'"),
         fill = T,
         header = F
       )
@@ -451,7 +451,8 @@ lga_rewards_new <- lapply(lga_new_files, read_rewards_new) %>% rbindlist() %>% s
   bind_cols(lga_subjects_new) %>% 
   separate(labanimalid, into = c("labanimalid", "cohort", "exp", "filename", "date", "time", "box"), sep = "_") %>% 
   mutate(date = lubridate::mdy(date), time = chron::chron(times = time)) %>% 
-  mutate(date = as.character(date), time = as.character(time))
+  mutate(date = as.character(date), time = as.character(time)) %>% 
+  mutate(rewards = as.numeric(rewards))
   
 
 ## before binding to date_time_subject_df_comp to make sure that the exp matches
@@ -543,7 +544,7 @@ lga_rewards_old %>% get_dupes(labanimalid, exp)
 ################################
 
 ###### NEW FILES ##############
-pr_new_files <- grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*New.*PR/", value = T) # 99 files
+pr_new_files <- grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*New.*PR/", value = T) # 119 files
 # label data with...
 pr_subjects_new <- process_subjects_new(pr_new_files) %>% separate(labanimalid, c("row", "labanimalid"), sep = "_", extra = "merge") %>%
   arrange(filename, as.numeric(row)) %>% select(-c(row, filename)) # 1232
@@ -562,7 +563,7 @@ pr_rewards_new <- lapply(pr_new_files, readrewards_pr) %>% rbindlist() %>% separ
     into = c("labanimalid", "cohort", "exp", "filename", "date", "time", "box"),
     sep = "_"
   ) %>% mutate(
-    date = lubridate::mdy(date) %>% as.character,
+    date = lubridate::mdy(date),
     time = chron::chron(times = time) %>% as.character
   ) %>% 
   mutate(exp = mgsub::mgsub(exp, c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4)))) # uniform exp names to join to subject comp
@@ -574,8 +575,7 @@ pr_rewards_new <- left_join(pr_rewards_new %>% mutate(start_datetime = paste(dat
   mutate(rewards = replace(rewards, cohort == "C04"&exp == "PR02", NA)) %>% # "it was noted in the lab notebook that this data did not record properly, even though it was extracted from the computers; But Giordano fixed this issue for the cohorts after C04" - Lani (3/31)
   select(-c(setdiff(names(.), names(pr_rewards_new)))) %>% 
   distinct() %>% #1232 gets rid of many cases from cohort 4 and 5 of 0 rewards 
-  mutate(rewards = as.numeric(rewards)) %>% 
-  mutate(as.character)
+  mutate(rewards = as.numeric(rewards)) 
 
 # qc with...
 pr_rewards_new %>% get_dupes(labanimalid, exp)
@@ -603,7 +603,7 @@ pr_rewards_new %>% distinct() %>% add_count(labanimalid, exp, cohort) %>% subset
 
 ###### OLD FILES ##############
 
-pr_old_files <- grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*Old.*PR/", value = T) # 24 files
+pr_old_files <- grep(list.files(path = "~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS", recursive = T, full.names = T), pattern = ".*Old.*PR/", value = T) # 24 files
 
 # label data with... 
 pr_subjects_old <- process_subjects_old(pr_old_files) ## quick qc pr_subjects_old %>% dplyr::filter(grepl("NA", labanimalid)) returns none
@@ -612,7 +612,7 @@ pr_subjects_old <- process_subjects_old(pr_old_files) ## quick qc pr_subjects_ol
 pr_rewards_old <- lapply(pr_old_files, read_fread_old, "rewards") %>% rbindlist() %>% separate(V1, into = c("row", "rewards"), sep = "_") %>% arrange(filename, as.numeric(row)) %>% select(-row) %>% 
   bind_cols(pr_subjects_old %>% arrange(filename, as.numeric(row)) %>% select(-c("row", "filename"))) %>% 
   separate(labanimalid, into = c("labanimalid", "box", "cohort", "exp", "computer", "date"), sep = "_") %>% 
-  mutate(date = lubridate::ymd(date) %>% as.character,
+  mutate(date = lubridate::ymd(date),
          rewards = as.numeric(rewards)) %>% 
   mutate(exp = mgsub::mgsub(exp, c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4)))) # uniform exp names to join to subject comp
 
@@ -627,7 +627,7 @@ pr_rewards_old %>% add_count(labanimalid, cohort,exp) %>% subset(n != 1)
 
 pr_rewards_old <- pr_rewards_old %>% 
   dplyr::filter(!(labanimalid=="F120"&rewards=="0"&exp=="PR05_T03")) %>% 
-  mutate_all(as.character)
+  mutate(rewards = as.numeric(rewards))
 
 
 

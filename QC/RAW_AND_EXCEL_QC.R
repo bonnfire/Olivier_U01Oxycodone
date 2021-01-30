@@ -2,6 +2,12 @@
 
 ## create phenotypes long and wide
 
+
+
+## for the oxy team to qc 
+# use brent's file to correct 
+## sha to be qc'ed by oxy team
+
 oxy_xl_sha_df <- bind_rows(sha_rewards_new, sha_rewards_old) %>%
   select(cohort, labanimalid, exp, rewards, filename) %>% 
   rename("rewards_raw" = "rewards") %>% 
@@ -14,16 +20,78 @@ oxy_xl_sha_df <- bind_rows(sha_rewards_new, sha_rewards_old) %>%
   mutate(rewards_QC_diff = rewards_xl - rewards_raw,
          rewards_QC = ifelse(rewards_QC_diff == 0, "pass", "fail"))
 
-setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE")
 oxy_xl_sha_df %>% 
   subset(rewards_QC == "fail") %>% 
   mutate(sex = str_extract(labanimalid, "[MF]")) %>% 
   spread(exp, rewards_xl) %>% 
   mutate(labanimalid_num = parse_number(labanimalid)) %>% 
   arrange(cohort, sex, labanimalid_num) %>% select(-labanimalid_num) %>% 
-  openxlsx::write.xlsx(file = "oxy_qc_sha.xlsx")
+  openxlsx::write.xlsx(file = "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxy_qc_sha.xlsx")
+
+oxy_xl_sha_df_qced <- oxy_xl_sha_df %>% 
+  left_join(openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/decision_oxy_qc_sha.xlsx") %>% select(rfid, filename, decision), by = c("rfid", "filename") ) %>% 
+  rename("rewards" = "decision") %>% 
+  mutate(rewards = coalesce(rewards, rewards_raw))
+
+oxy_xl_sha_df_qced %>% ggplot(aes(x = rewards_raw, y = rewards_xl)) + geom_point()
+oxy_xl_sha_df_qced %>% ggplot(aes(x = rewards_raw, y = rewards)) + geom_point()
 
 
+## lga to be qc'ed by oxy team 
+
+oxy_xl_lga_df <- bind_rows(lga_rewards_new, lga_rewards_old) %>%
+  select(cohort, labanimalid, exp, rewards, filename) %>% 
+  rename("rewards_raw" = "rewards") %>% 
+  mutate(exp = tolower(exp)) %>% 
+  left_join(olivieroxy_excel %>% select(matches("cohort|labanimalid|rfid|^lga\\d")) %>% 
+              distinct() %>% 
+              gather("exp", "rewards_xl", -cohort, -rfid, -labanimalid),
+            by = c("cohort", "labanimalid", "exp")) %>% 
+  mutate_at(vars(matches("^rewards")), as.numeric) %>% 
+  mutate(rewards_QC_diff = rewards_xl - rewards_raw,
+         rewards_QC = ifelse(rewards_QC_diff == 0, "pass", "fail")) %>% 
+  subset(!(is.na(labanimalid)|labanimalid == "NA"))
+
+oxy_xl_lga_df %>% 
+  subset(rewards_QC == "fail") %>% # XX come back to figure out the NA w comments and all (ex: F111 NA but accounted for in the Excel data comment) 
+  mutate(sex = str_extract(labanimalid, "[MF]")) %>% 
+  spread(exp, rewards_xl) %>% 
+  mutate(labanimalid_num = parse_number(labanimalid)) %>% 
+  arrange(cohort, sex, labanimalid_num) %>% select(-labanimalid_num) %>% 
+  openxlsx::write.xlsx(file = "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxy_qc_lga.xlsx")
+
+
+oxy_xl_lga_df_qced <- oxy_xl_lga_df %>% 
+  left_join(openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/decision_oxy_qc_lga.xlsx") %>% select(rfid, filename, decision), by = c("rfid", "filename") ) %>% 
+  rename("rewards" = "decision") %>% 
+  mutate(rewards = coalesce(rewards, rewards_raw))
+
+oxy_xl_lga_df_qced %>% ggplot(aes(x = rewards_raw, y = rewards_xl)) + geom_point()
+oxy_xl_lga_df_qced %>% ggplot(aes(x = rewards_raw, y = rewards)) + geom_point()
+
+
+# pr to be qc'ed by oxy team 
+
+oxy_xl_pr_df <- bind_rows(pr_rewards_new, pr_rewards_old) %>%
+  select(cohort, labanimalid, exp, rewards, filename) %>% 
+  rename("rewards_raw" = "rewards") %>% 
+  mutate(exp = tolower(exp)) %>% 
+  left_join(olivieroxy_excel %>% select(matches("cohort|labanimalid|rfid|^pr\\d")) %>% 
+              distinct() %>% 
+              gather("exp", "rewards_xl", -cohort, -rfid, -labanimalid),
+            by = c("cohort", "labanimalid", "exp")) %>% 
+  mutate_at(vars(matches("^rewards")), as.numeric) %>% 
+  mutate(rewards_QC_diff = rewards_xl - rewards_raw,
+         rewards_QC = ifelse(rewards_QC_diff == 0, "pass", "fail"))
+  
+
+oxy_xl_pr_df %>% 
+  subset(rewards_QC == "fail") %>% 
+  mutate(sex = str_extract(labanimalid, "[MF]")) %>% 
+  spread(exp, rewards_xl) %>% 
+  mutate(labanimalid_num = parse_number(labanimalid)) %>% 
+  arrange(cohort, sex, labanimalid_num) %>% select(-labanimalid_num) %>% 
+  openxlsx::write.xlsx(file = "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxy_qc_pr.xlsx")
 
 
 
