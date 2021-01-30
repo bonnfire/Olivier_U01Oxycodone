@@ -413,7 +413,9 @@ tail_immersion_df <- tail_immersion_df %>% left_join(rat_info_allcohort_xl_df %>
 setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE")
 # write.csv(tail_immersion_df, file = "oxycodone.xlsx", row.names = F)
 
-
+## simple plot for the qc meeting w giordano 02/01/2021 
+tail_immersion_df %>% select(cohort, labanimalid, oxy_on_board_s, x12h_wd_w_oxy_s) %>% mutate(sex = str_match(labanimalid, "[MF]")) %>% gather("session", "measure", -cohort, -labanimalid, -sex) %>% ggplot(aes(x = session, y = measure, fill = cohort)) + geom_boxplot() + facet_grid(~sex) 
+  
 
 ## Von Frey
 setwd("~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone")
@@ -453,6 +455,19 @@ von_frey_df_rfid <- von_frey_df %>% left_join(rat_info_allcohort_xl_df %>%
   left_join(compromised_rats[, c("labanimalid", "rfid")], by = c("labanimalid")) %>% # find the 
   mutate(rfid = coalesce(rfid.x, rfid.y)) %>% 
   select(-c("rfid.x", "rfid.y")) # 6 left without rfid's, missing from mapping files (no naive data from cohort 4)
+
+
+
+von_frey_df %>% select(cohort, labanimalid, pain_force_per_rat_bsl, pain_force_per_rat_wd) %>% mutate(sex = str_match(labanimalid, "[MF]")) %>% gather("session", "measure", -cohort, -labanimalid, -sex) %>% ggplot(aes(x = session, y = measure, fill = cohort)) + geom_boxplot() + facet_grid(~sex) 
+
+
+
+
+
+
+
+
+
 
 
 setwd("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE")

@@ -181,7 +181,28 @@ WFU_OlivierOxycodone_test_df %>%
 #        "exp_time" = "time") %>% # 15527
 
 
-Olivier_Cocaine_df %>% select(cohort, rfid, exp, rewards, datedropped, flag) %>% subset(!is.na(flag))
+WFU_OlivierOxycodone_test_df %>% select(cohort, rfid, exp, rewards, datedropped, flag) %>% subset(!is.na(flag))
+
+## join to calculate the addiction index 
+%>% left_join(tail_immersion_df, by = c("cohort", "labanimalid", "rfid")) %>% ## 01/29/2021 fix the rfid issue w naive animals first 
+  left_join(von_frey_df[, c("rfid", "pain_force_per_rat_bsl", "pain_force_per_rat_wd")], by = "rfid") %>% 
+  mutate(tolerance = diff(x12h_wd_w_oxy_s, oxy_on_board_s),
+         pain = diff(pain_force_per_rat_bsl, pain_force_per_rat_wd)) %>% 
+  group_by(cohort, sex) %>% 
+  mutate(tolerance_mean = mean(tolerance, na.rm = T),
+         tolerance_sd = sd(tolerance, na.rm = T), 
+         pain_mean = mean(pain, na.rm = T), 
+         pain_sd = sd(pain, na.rm = T)) %>% 
+  ungroup() %>% 
+  mutate(tolerance_index = (tolerance - tolerance_mean)/tolerance_sd,
+         pain_index = (pain - pain_mean)/pain_sd) %>% 
+  mutate(addiction_index = rowMeans(select(., ends_with("index")), na.rm = TRUE)) %>% 
+
+
+
+
+
+
 
 
 
