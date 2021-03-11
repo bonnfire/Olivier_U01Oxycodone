@@ -93,6 +93,7 @@ oxy_xl_pr_df %>%
   arrange(cohort, sex, labanimalid_num) %>% select(-labanimalid_num) %>% 
   openxlsx::write.xlsx(file = "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxy_qc_pr.xlsx")
 
+oxy_xl_pr_df %>% ggplot(aes(x = rewards_raw, y = rewards_xl)) + geom_point()
 
 
 

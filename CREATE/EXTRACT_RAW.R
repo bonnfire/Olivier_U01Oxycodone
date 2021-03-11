@@ -544,10 +544,49 @@ lga_rewards_old %>% get_dupes(labanimalid, exp)
 ################################
 
 ###### NEW FILES ##############
-pr_new_files <- grep(list.files(path = ".", recursive = T, full.names = T), pattern = ".*New.*PR/", value = T) # 119 files
-# label data with...
-pr_subjects_new <- process_subjects_new(pr_new_files) %>% separate(labanimalid, c("row", "labanimalid"), sep = "_", extra = "merge") %>%
-  arrange(filename, as.numeric(row)) %>% select(-c(row, filename)) # 1232
+pr_new_files_c01_07 <- grep(list.files(path = "~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS", recursive = T, full.names = T), pattern = ".*New.*PR/", value = T) %>% grep("/C0[1-7]", . , value = T) # 119 files
+
+# extract subject, box, and rewards, active, inactive, pr 
+pr_msn <- lapply(pr_new_files_c01_07, function(x){
+  # internal_filename = fread(paste0("awk '/MSN:/{print $2}' '", x, "'"))
+  internal_filename = fread(paste0("awk '/MSN:/{print $1 $2 $3}' '", x, "'"), header = F, fill = T)
+  
+  subject = fread(paste0("awk '/Subject:/{print $2}' '", x, "'"), header = F, fill = T)
+  
+  box = fread(paste0("awk '/Box:/{print $2}' '", x, "'"), header = F, fill = T)
+  
+  metadata = cbind(subject = subject, box = box)
+  
+  if(grepl("GWAS", unique(internal_filename$V1))){
+    rewards = fread(paste0("awk '/^B: /{print $2}' ", "'", x, "'"), header = F, fill = T)
+    active = fread(paste0("awk '/^G: /{print $2}' ", "'", x, "'"), header = F, fill = T)
+    inactive = fread(paste0("awk '/^A: /{print $2}' ", "'", x, "'"), header = F, fill = T)
+    pr <- fread(paste0("awk '/^S: /{print $2}' ", "'", x, "'"), header = F, fill = T)
+  }
+  else{
+    rewards = fread(paste0("awk '/^C: /{print $2}' ", "'", x, "'"), header = F, fill = T)
+    active = fread(paste0("awk '/^B: /{print $2}' ", "'", x, "'"), header = F, fill = T)
+    inactive = fread(paste0("awk '/^A: /{print $2}' ", "'", x, "'"), header = F, fill = T)
+    pr <- fread(paste0("awk '/^L: /{print $2}' ", "'", x, "'"), header = F, fill = T)
+  }
+  
+  data = list("rewards" = rewards,
+              "active" = active,
+              "inactive" = inactive, 
+              "pr" = pr
+  ) %>% do.call(cbind, .)
+  
+  
+  internal_filename <- cbind(msn = internal_filename, cbind(metadata, data)) %>% 
+    rename_all(~ stringr::str_replace_all(., '[.](V1)?', '')) %>% 
+    mutate(filename = x )
+  
+  return(internal_filename)
+})
+
+pr_msn_df <- pr_msn %>% 
+  rbindlist(fill = T) %>% 
+  
 
 
 # extract data with diff function from `read_rewards_new` for sha
