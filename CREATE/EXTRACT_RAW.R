@@ -548,7 +548,6 @@ pr_new_files_c01_07 <- grep(list.files(path = "~/Dropbox (Palmer Lab)/GWAS (1)/O
 
 # extract subject, box, and rewards, active, inactive, pr 
 pr_msn <- lapply(pr_new_files_c01_07, function(x){
-  # internal_filename = fread(paste0("awk '/MSN:/{print $2}' '", x, "'"))
   internal_filename = fread(paste0("awk '/MSN:/{print $1 $2 $3}' '", x, "'"), header = F, fill = T)
   
   subject = fread(paste0("awk '/Subject:/{print $2}' '", x, "'"), header = F, fill = T)
@@ -586,40 +585,45 @@ pr_msn <- lapply(pr_new_files_c01_07, function(x){
 
 pr_msn_df <- pr_msn %>% 
   rbindlist(fill = T) %>% 
-  
+  mutate(cohort = str_match(filename, "C\\d+") %>% as.character,
+         filename = gsub(".*/PR/", "", filename),
+         exp = gsub(".*OXY", "", filename) %>% mgsub::mgsub(., c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4))),
+         room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename) %>% gsub(".*LGA/", "", .), NA),
+         box = as.character(box)) 
+  # sex = str_extract(toupper(labanimalid), "[MF]")
 
+# clean metadata and join to correct data 
+pr_msn_df <- pr_msn_df %>% 
+  mutate(subject = replace(subject, subject == "0", NA)) %>% 
+  left_join(date_time_subject_df_comp, by = c("cohort", "exp", "filename", "box")) %>% 
+  mutate(subject = coalesce(subject, labanimalid)) %>% 
+  # subset(labanimalid != subject)
+  mutate(subject = replace(subject, subject == "M536", "F536")) 
+
+pr_msn_df %>% 
+  naniar::vis_miss()
+
+pr_msn_df %>% subset(labanimalid != subject)
+pr_msn_df <- pr_msn_df %>% 
+  select(-labanimalid) %>% 
+  rename("labanimalid" = "subject",
+         "pr_breakpoint" = "pr") 
 
 # extract data with diff function from `read_rewards_new` for sha
-readrewards_pr <- function(x){
-  rewards <- fread(paste0("awk '/B:/{print NR \"_\" $2}' ", "'", x, "'"), header = F, fill = T)
-  rewards$filename <- x
-  return(rewards)
-}
-pr_rewards_new <- lapply(pr_new_files, readrewards_pr) %>% rbindlist() %>% separate(V1, into = c("row", "rewards"), sep = "_") %>% arrange(filename, as.numeric(row)) %>% select(-row) %>% 
-  bind_cols(pr_subjects_new) %>%
-  separate(
-    labanimalid,
-    into = c("labanimalid", "cohort", "exp", "filename", "date", "time", "box"),
-    sep = "_"
-  ) %>% mutate(
-    date = lubridate::mdy(date),
-    time = chron::chron(times = time) %>% as.character
-  ) %>% 
-  mutate(exp = mgsub::mgsub(exp, c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4)))) # uniform exp names to join to subject comp
 
 ## for missing subjects 
-pr_rewards_new <- left_join(pr_rewards_new %>% mutate(start_datetime = paste(date, time)), date_time_subject_df_comp, by = c("cohort", "exp", "filename", "start_datetime")) %>% 
-  mutate(labanimalid = coalesce(labanimalid.y, labanimalid.x)) %>% 
-  select(-c("labanimalid.x", "labanimalid.y")) %>% 
-  mutate(rewards = replace(rewards, cohort == "C04"&exp == "PR02", NA)) %>% # "it was noted in the lab notebook that this data did not record properly, even though it was extracted from the computers; But Giordano fixed this issue for the cohorts after C04" - Lani (3/31)
-  select(-c(setdiff(names(.), names(pr_rewards_new)))) %>% 
-  distinct() %>% #1232 gets rid of many cases from cohort 4 and 5 of 0 rewards 
-  mutate(rewards = as.numeric(rewards)) 
+# pr_rewards_new <- left_join(pr_rewards_new %>% mutate(start_datetime = paste(date, time)), date_time_subject_df_comp, by = c("cohort", "exp", "filename", "start_datetime")) %>% 
+#   mutate(labanimalid = coalesce(labanimalid.y, labanimalid.x)) %>% 
+#   select(-c("labanimalid.x", "labanimalid.y")) %>% 
+#   mutate(rewards = replace(rewards, cohort == "C04"&exp == "PR02", NA)) %>% # "it was noted in the lab notebook that this data did not record properly, even though it was extracted from the computers; But Giordano fixed this issue for the cohorts after C04" - Lani (3/31)
+#   select(-c(setdiff(names(.), names(pr_rewards_new)))) %>% 
+#   distinct() %>% #1232 gets rid of many cases from cohort 4 and 5 of 0 rewards 
+#   mutate(rewards = as.numeric(rewards)) 
 
 # qc with...
-pr_rewards_new %>% get_dupes(labanimalid, exp)
-pr_rewards_new %>% count(labanimalid, exp, cohort) %>% subset(n!=1)
-pr_rewards_new %>% distinct() %>% add_count(labanimalid, exp, cohort) %>% subset(n!=1)
+# pr_rewards_new %>% get_dupes(labanimalid, exp)
+# pr_rewards_new %>% count(labanimalid, exp, cohort) %>% subset(n!=1)
+# pr_rewards_new %>% distinct() %>% add_count(labanimalid, exp, cohort) %>% subset(n!=1)
 
 # deal with the missing subjects...
 # join and update "df" by reference, i.e. without copy 
@@ -642,31 +646,54 @@ pr_rewards_new %>% distinct() %>% add_count(labanimalid, exp, cohort) %>% subset
 
 ###### OLD FILES ##############
 
-pr_old_files <- grep(list.files(path = "~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS", recursive = T, full.names = T), pattern = ".*Old.*PR/", value = T) # 24 files
+pr_old_files_c01_07 <- grep(list.files(path = "~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS", recursive = T, full.names = T), pattern = ".*Old.*PR/", value = T) %>% grep("/C0[1-7]", . , value = T) # 24 files
 
-# label data with... 
-pr_subjects_old <- process_subjects_old(pr_old_files) ## quick qc pr_subjects_old %>% dplyr::filter(grepl("NA", labanimalid)) returns none
+pr_phenotypes_old <- pr_old_files_c01_07 %>% lapply(function(x){
+  subject = fread(paste0("awk '/RatNumber/{flag=1;next}/ProgramName/{flag=0}flag' ", "'", x, "'"), fill = T, header = F)
+  
+  box = fread(paste0("awk '/BoxNumber/{flag=1;next}/Sessionlength/{flag=0}flag' ", "'", x, "' | sed \"s/[[:blank:]]//g\""), fill = T, header = F)
+  
+  metadata = cbind(subject = subject, box = box)
+  
+  rewards = fread(paste0("awk '/totalRewards/{flag=1;next}/TotalResponses/{flag=0}flag' ", "'", x, "' | sed \"s/[[:blank:]]//g\""), fill = T, header = F)
+  inactive = fread(paste0("awk '/TotalRspInAct/{flag=1;next}/TotalTORspInAct/{flag=0}flag' ", "'", x, "'  sed \"s/[[:blank:]]//g\""), fill = T, header = F)
+  pr_breakpoint = fread(paste0("awk '/^fr/{flag=1;next}/RewarfDuration/{flag=0}flag' ", "'", x, "' | sed \"s/[[:blank:]]//g\""), fill = T, header = F)
+  
+  data = list("rewards" = rewards,
+              "inactive" = inactive, 
+              "pr_breakpoint" = pr_breakpoint
+  ) %>% do.call(cbind, .)
+  
+  old_directory <- cbind(metadata, data) %>% 
+    rename_all(~ stringr::str_replace_all(., '[.](V1)?', '')) %>% 
+    mutate(filename = x )
+  
+  return(old_directory)
+  })
 
-# extract data...
-pr_rewards_old <- lapply(pr_old_files, read_fread_old, "rewards") %>% rbindlist() %>% separate(V1, into = c("row", "rewards"), sep = "_") %>% arrange(filename, as.numeric(row)) %>% select(-row) %>% 
-  bind_cols(pr_subjects_old %>% arrange(filename, as.numeric(row)) %>% select(-c("row", "filename"))) %>% 
-  separate(labanimalid, into = c("labanimalid", "box", "cohort", "exp", "computer", "date"), sep = "_") %>% 
-  mutate(date = lubridate::ymd(date),
-         rewards = as.numeric(rewards)) %>% 
-  mutate(exp = mgsub::mgsub(exp, c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4)))) # uniform exp names to join to subject comp
-
-
-
-# deal with the missing subjects...
-pr_rewards_old %>% subset(!grepl("M|F(\\d){3}", labanimalid)) %>% select(labanimalid) %>% table()
+pr_phenotypes_old_df <- pr_phenotypes_old %>% 
+  rbindlist(fill = T) %>% 
+  mutate(cohort = str_match(filename, "C\\d+") %>% as.character,
+         filename = gsub(".*/PR/", "", filename),
+         exp = gsub(".*OXY(.*)-.*", "\\1", filename) %>% mgsub::mgsub(., c("PR([1-9]{1})$", paste0("TREATMENT", 1:4)), c("PR0\\1", paste0("PR0", 3:6, "_T0", 1:4))),
+         room = ifelse(grepl("[[:alnum:]]+C\\d{2}HS", filename), gsub("C\\d{2}HS.*", "", filename), NA),
+         box = as.character(box)) 
 
 ## case: deal with mislabelled subjects? (each id should be associated with one exp)
-pr_rewards_old %>% get_dupes(labanimalid, exp)
-pr_rewards_old %>% add_count(labanimalid, cohort,exp) %>% subset(n != 1)
+pr_phenotypes_old_df %>%  subset(!grepl("M|F(\\d){3}", subject)) %>% select(subject) %>% table()
 
-pr_rewards_old <- pr_rewards_old %>% 
-  dplyr::filter(!(labanimalid=="F120"&rewards=="0"&exp=="PR05_T03")) %>% 
-  mutate(rewards = as.numeric(rewards))
+pr_phenotypes_old_df <- pr_phenotypes_old_df %>% 
+  rename("labanimalid" = "subject")
+
+pr_phenotypes_old_df %>% get_dupes(labanimalid, exp)
+
+pr_phenotypes_old_df <- pr_phenotypes_old_df %>% 
+dplyr::filter(!(labanimalid=="F120"&rewards=="0"&exp=="PR05_T03"))
+  
+pr_phenotypes_old_df %>% 
+  naniar::vis_miss()
+
+
 
 
 

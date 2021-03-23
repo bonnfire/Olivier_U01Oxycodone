@@ -72,18 +72,74 @@ oxy_xl_lga_df_qced %>% ggplot(aes(x = rewards_raw, y = rewards)) + geom_point()
 
 # pr to be qc'ed by oxy team 
 
-oxy_xl_pr_df <- bind_rows(pr_rewards_new, pr_rewards_old) %>%
-  select(cohort, labanimalid, exp, rewards, filename) %>% 
-  rename("rewards_raw" = "rewards") %>% 
+oxy_xl_pr_df <- bind_rows(pr_msn_df, pr_phenotypes_old_df) %>%
+  select(cohort, labanimalid, exp, rewards, active, inactive, pr_breakpoint, room, filename) %>% 
+  rename_at(vars(matches("rewards|active|breakpoint")), ~paste0(., "_raw")) %>% 
   mutate(exp = tolower(exp)) %>% 
-  left_join(olivieroxy_excel %>% select(matches("cohort|labanimalid|rfid|^pr\\d")) %>% 
-              distinct() %>% 
-              gather("exp", "rewards_xl", -cohort, -rfid, -labanimalid),
+  full_join(olivieroxy_excel_all %>% select(matches("cohort|labanimalid|rfid|^pr\\d|measurement")) %>% 
+              distinct() %>% gather("exp", "session", -cohort, -rfid, -measurement, -labanimalid) %>% 
+              spread(measurement, session) %>% 
+              rename_at(vars(matches("rewards|active|breakpoint")), ~paste0(., "_xl")) %>% 
+              select_if(~sum(!is.na(.))>0) %>% 
+              mutate(rfid = as.character(rfid)),
             by = c("cohort", "labanimalid", "exp")) %>% 
-  mutate_at(vars(matches("^rewards")), as.numeric) %>% 
-  mutate(rewards_QC_diff = rewards_xl - rewards_raw,
-         rewards_QC = ifelse(rewards_QC_diff == 0, "pass", "fail"))
+  mutate_at(vars(matches("_(raw|xl)")), as.numeric) %>% 
+  subset(grepl("^[MF]\\d+", labanimalid))
+# %>% 
+  # mutate(rewards_QC_diff = rewards_xl - rewards_raw,
+  #        rewards_QC = ifelse(rewards_QC_diff == 0, "pass", "fail"))
   
+oxy_xl_pr_df %>% ggplot(aes(x = rewards_raw, y = rewards_xl)) + geom_point()
+oxy_xl_pr_df %>% ggplot(aes(x = active_raw, y = active_xl)) + geom_point()
+oxy_xl_pr_df %>% ggplot(aes(x = inactive_raw, y = inactive_xl)) + geom_point()
+oxy_xl_pr_df %>% ggplot(aes(x = pr_breakpoint_raw, y = pr_breakpoint_xl)) + geom_point()
+
+oxy_xl_pr_df %>% ggplot(aes(x = pr_breakpoint_raw, y = pr_breakpoint_xl)) + geom_point()
+oxy_xl_pr_df %>% select(cohort, exp, matches("_(raw|xl)$")) %>% group_by(cohort, exp) %>% summarize_each(~sum(is.na(.))) %>% ungroup() %>% View() #prop.table()
+
+oxy_xl_pr_df_qc <- oxy_xl_pr_df %>% 
+  mutate(rewards_QC_diff = rewards_xl - rewards_raw,
+         rewards_QC = ifelse(rewards_QC_diff == 0, "pass", "fail"),
+         active_QC_diff = active_xl - active_raw, 
+         active_QC = ifelse(active_QC_diff == 0, "pass", "fail"),
+         inactive_QC_diff = inactive_xl - inactive_raw, 
+         inactive_QC = ifelse(inactive_QC_diff == 0, "pass", "fail"),
+         pr_breakpoint_QC_diff = pr_breakpoint_xl - pr_breakpoint_raw, 
+         pr_breakpoint_QC = ifelse(pr_breakpoint_QC_diff == 0, "pass", "fail")
+  ) %>% 
+  left_join(compromised_rats[, c("labanimalid", "death_comment")], by = "labanimalid")
+
+
+## create excels for olivier team to fix 
+oxy_xl_pr_df_qc %>% 
+  select(cohort, labanimalid, exp, rfid, filename, room, matches("rewards_"), death_comment) %>% 
+  subset(is.na(rewards_QC) | rewards_QC == "fail") %>% 
+  arrange(cohort, str_extract(labanimalid, "[MF]"), parse_number(labanimalid), exp) %>% 
+  openxlsx::write.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_rewards_qc_c01_07.xlsx")
+
+oxy_xl_pr_df_qc %>% 
+  select(cohort, labanimalid, exp, rfid, filename, room, matches("^active_"), death_comment) %>% 
+  subset(is.na(active_QC) | active_QC == "fail") %>% 
+  arrange(cohort, str_extract(labanimalid, "[MF]"), parse_number(labanimalid), exp) %>% 
+  openxlsx::write.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_active_qc_c01_07.xlsx")
+
+oxy_xl_pr_df_qc %>% 
+  select(cohort, labanimalid, exp, rfid, filename, room, matches("^inactive_"), death_comment) %>% 
+  subset(is.na(inactive_QC) | inactive_QC == "fail") %>% 
+  arrange(cohort, str_extract(labanimalid, "[MF]"), parse_number(labanimalid), exp) %>% 
+  openxlsx::write.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_inactive_qc_c01_07.xlsx")
+
+oxy_xl_pr_df_qc %>% 
+  select(cohort, labanimalid, exp, rfid, filename, room, matches("^pr_breakpoint_"), death_comment) %>% 
+  subset(is.na(pr_breakpoint_QC) | pr_breakpoint_QC == "fail") %>% 
+  arrange(cohort, str_extract(labanimalid, "[MF]"), parse_number(labanimalid), exp) %>% 
+  openxlsx::write.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_pr_breakpoint_qc_c01_07.xlsx")
+
+
+
+
+
+
 
 oxy_xl_pr_df %>% 
   subset(rewards_QC == "fail") %>% 
@@ -91,9 +147,12 @@ oxy_xl_pr_df %>%
   spread(exp, rewards_xl) %>% 
   mutate(labanimalid_num = parse_number(labanimalid)) %>% 
   arrange(cohort, sex, labanimalid_num) %>% select(-labanimalid_num) %>% 
-  openxlsx::write.xlsx(file = "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxy_qc_pr.xlsx")
+  openxlsx::write.xlsx(file = "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_qc_pr.xlsx")
 
 oxy_xl_pr_df %>% ggplot(aes(x = rewards_raw, y = rewards_xl)) + geom_point()
+
+
+
 
 
 
