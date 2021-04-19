@@ -1,30 +1,29 @@
-## temporarily using this one: 
-
-
-cohortfiles_xl_c01_07 <- list.files(path = "~/Dropbox (Palmer Lab)/Olivier_George_U01/GWAS Self Administration Data/Oxy Data", pattern = "*.xlsx") %>% grep("C0[1-7]", ., value = T)
 
 # run this section after running all sections after cohort1
+
+
 # 4 excels: 1,4 are both in the same format, 3 is similar but has comments in the names header, but 5 is in the format from the cocaine exp
-olivieroxy_excel_rewards <- list("C01"=selfadmin_rewards_cohort1,
-                         "C03"=selfadmin_rewards_cohort3,
-                         "C04"=selfadmin_rewards_cohort4,
-                         "C05"=selfadmin_rewards_cohort5,
-                         "C06"=selfadmin_rewards_cohort6,
-                         "C07"=selfadmin_rewards_cohort7) %>% rbindlist(idcol = "cohort", fill = T) %>% 
-  clean_names() %>% # use this fxn to return df, use make_clean_names on vector 
-  rename("labanimalid" = "rat") %>% 
-  mutate_all(as.character)
+# olivieroxy_excel_rewards <- list("C01"=selfadmin_rewards_cohort1,
+#                          "C03"=selfadmin_rewards_cohort3,
+#                          "C04"=selfadmin_rewards_cohort4,
+#                          "C05"=selfadmin_rewards_cohort5,
+#                          "C06"=selfadmin_rewards_cohort6,
+#                          "C07"=selfadmin_rewards_cohort7) %>% rbindlist(idcol = "cohort", fill = T) %>% 
+#   clean_names() %>% # use this fxn to return df, use make_clean_names on vector 
+#   rename("labanimalid" = "rat") %>% 
+#   mutate_all(as.character)
+# 
+# olivieroxy_excel_dateslong <- olivieroxy_excel_rewards %>% select(matches("date|cohort")) %>% distinct() %>% # for record keeping, make sure to make this change on the actual excel! 
+#   gather(v, value, date_sha01:date_sha06_special) %>% separate(v, c("date", "exp"), sep = "_", extra = "merge") %>% 
+#   arrange(cohort) %>% 
+#   select(-date) %>% 
+#   mutate(exp = toupper(exp),
+#          value = as.character(lubridate::ymd(value))) %>% 
+#   rename("excel_date" = "value") %>% 
+#   subset(!is.na(excel_date)) %>% 
+#   mutate(excel_date = replace(excel_date, cohort == "C03" & exp == "LGA04", "2019-02-02"))## Based on Brent's comment on Slack 3/17/2020 "But for LGA04, the date seems to be incorrect on the data sheet. The date the experiment ended should be 2/2/2019, not 2/3/2019. " 
 
-olivieroxy_excel_dateslong <- olivieroxy_excel_rewards %>% select(matches("date|cohort")) %>% distinct() %>% # for record keeping, make sure to make this change on the actual excel! 
-  gather(v, value, date_sha01:date_sha06_special) %>% separate(v, c("date", "exp"), sep = "_", extra = "merge") %>% 
-  arrange(cohort) %>% 
-  select(-date) %>% 
-  mutate(exp = toupper(exp),
-         value = as.character(lubridate::ymd(value))) %>% 
-  rename("excel_date" = "value") %>% 
-  subset(!is.na(excel_date)) %>% 
-  mutate(excel_date = replace(excel_date, cohort == "C03" & exp == "LGA04", "2019-02-02"))## Based on Brent's comment on Slack 3/17/2020 "But for LGA04, the date seems to be incorrect on the data sheet. The date the experiment ended should be 2/2/2019, not 2/3/2019. " 
-
+# run this line after running all sections after cohort1
 # create object for all values
 olivieroxy_excel_all <- list(
   "C01"=selfadmin_xl_cohort1,
@@ -32,7 +31,9 @@ olivieroxy_excel_all <- list(
   "C04"=selfadmin_xl_cohort4,
   "C05"=selfadmin_xl_cohort5,
   "C06"=selfadmin_xl_cohort6,
-  "C07"=selfadmin_xl_cohort7
+  "C07"=selfadmin_xl_cohort7,
+  "C09"=selfadmin_xl_cohort9,
+  "C10"=selfadmin_xl_cohort10
 ) %>% rbindlist(idcol = "cohort", fill = T) %>%
   select_if(~sum(!is.na(.)) > 0) %>% 
   clean_names() %>% 
@@ -42,25 +43,32 @@ olivieroxy_excel_all <- list(
          measurement = gsub("^PR.*", "pr_breakpoint", measurement),
          measurement = gsub("^REWARDS.*", "rewards", measurement)) 
 
+olivieroxy_excel_all <- olivieroxy_excel_all %>% 
+  subset(!grepl("\\D+:", labanimalid))
+  
+  
+rm(list = ls(pattern = "selfadmin_(xl|rewards)|cohortinfo|comments_df|selfadmin(_df)?|nm(1)?|dates"))
 
-# run this line after running all sections after cohort1
 
 ## to extract the mapping excels 
 cohortinfofiles <- list.files(path = "~/Dropbox (Palmer Lab)/Olivier_George_U01/Rat Information/Oxycodone", pattern = "*.xlsx", full.names = T)
 
 
-
 u01.importxlsx <- function(xlname){
-  df <- lapply(excel_sheets(path = xlname), read_excel, path = xlnameF)
+  df <- lapply(excel_sheets(path = xlname), read_excel, path = xlname)
   names(df) <- excel_sheets(xlname)
   return(df)
 }
+
+
+cohortfiles_xl_c01_10 <- list.files(path = "~/Dropbox (Palmer Lab)/Olivier_George_U01/GWAS Self Administration Data/Oxy Data", pattern = "*.xlsx", full.names = T) %>% grep("C(0[1-9]|1[0])", ., value = T)
+
 
 ########################
 # COHORT 1 
 ########################
 setwd("~/Dropbox (Palmer Lab)/Olivier_George_U01/GWAS Self Administration Data/Oxy Data")
-filename <- cohortfiles_xl_c01_07[1]
+filename <- cohortfiles_xl_c01_10[1]
 selfadmin <- u01.importxlsx(filename)[[1]] %>%
   as.data.table
 selfadmin[ selfadmin == "n/a" ] <- NA # change all character n/a to actual NA
@@ -102,7 +110,7 @@ selfadmin_xl_cohort1 <- selfadmin_df %>% ## Lani notes on 03/12 "Rewards data fo
 ########################  
 
 # this file doesn't have rfid's so will need to extract from the replacement table
-filename <- cohortfiles_xl_c01_07[2]
+filename <- cohortfiles_xl_c01_10[2]
 selfadmin <- u01.importxlsx(filename)[[1]] %>%
   as.data.table
 selfadmin[ selfadmin == "n/a" ] <- NA # change all character n/a to actual NA
@@ -156,7 +164,7 @@ selfadmin_xl_cohort3 <- selfadmin_xl_cohort3 %>%
 ########################
 # this file doesn't have rfid's so will need to extract from the replacement table
 
-filename <- cohortfiles_xl_c01_07[3]
+filename <- cohortfiles_xl_c01_10[3]
 selfadmin <- u01.importxlsx(filename)[[1]] %>%
   as.data.table
 selfadmin[ selfadmin == "n/a" ] <- NA # change all character n/a to actual NA
@@ -212,7 +220,7 @@ selfadmin_xl_cohort4 <- selfadmin_xl_cohort4 %>%
 ########################
 # COHORT 5
 ########################
-# filename <- cohortfiles_xl_c01_07[4]
+# filename <- cohortfiles_xl_c01_10[4]
 
 filename <- "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/OXY GWAS C05 Data.xlsx" # XX temp for Lani 
 selfadmin <- u01.importxlsx(filename)[[1]] %>%
@@ -254,17 +262,11 @@ selfadmin_rewards_cohort5 <- selfadmin_df %>% dplyr::filter(measurement == "REWA
 selfadmin_xl_cohort5 <- selfadmin_df
 
 
-selfadmin_rewards_cohort5 <- selfadmin %>% 
-  mutate(measurement = "REWARDS")
-
-selfadmin_xl_cohort5 <- selfadmin %>% mutate(measurement = "PR_BREAKPOINT")## XX troubleshoot, doesn't have the other measurements
-
-
 ########################
 # COHORT 6
 ########################
 
-filename <- cohortfiles_xl_c01_07[5]
+filename <- cohortfiles_xl_c01_10[5]
 selfadmin <- u01.importxlsx(filename)[[1]] %>%
   as.data.table
 selfadmin[ selfadmin == "n/a" ] <- NA # change all character n/a to actual NA
@@ -300,6 +302,22 @@ names(selfadmin_split) <- lapply(selfadmin_split, function(x){ x$RAT %>% head(1)
 selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grepl("^[MF]\\d+", RAT))})
 selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement") %>% dplyr::filter(measurement != "COMMENT")
 selfadmin_rewards_cohort6 <- selfadmin_df %>% dplyr::filter(measurement == "REWARDS")
+
+# move columns over because of formatting in excel
+selfadmin_df <- selfadmin_df %>% 
+  rowwise() %>% 
+  mutate(PR01 = replace(PR01, measurement == "PR", SHA01), 
+         PR02 = replace(PR02, measurement == "PR", SHA02), 
+         PR03_T01 = replace(PR03_T01, measurement == "PR", SHA03),
+         PR04_T02 = replace(PR04_T02, measurement == "PR", SHA04),
+         PR05_T03 = replace(PR05_T03, measurement == "PR", PR01),
+         PR06_T04 = replace(PR06_T04, measurement == "PR", LGA01)) %>% 
+  mutate(SHA01 = replace(SHA01, measurement == "PR", NA), 
+         SHA02 = replace(SHA02, measurement == "PR", NA), 
+         SHA03 = replace(SHA03, measurement == "PR", NA),
+         SHA04 = replace(SHA04, measurement == "PR", NA),
+         LGA01 = replace(LGA01, measurement == "PR", NA)) %>% 
+  ungroup()s
 selfadmin_xl_cohort6 <- selfadmin_df
 
 
@@ -307,7 +325,7 @@ selfadmin_xl_cohort6 <- selfadmin_df
 # COHORT 7
 ########################
 
-filename <- cohortfiles_xl_c01_07[6]
+filename <- cohortfiles_xl_c01_10[6]
 selfadmin <- u01.importxlsx(filename)[[1]] %>%
   as.data.table
 selfadmin[ selfadmin == "n/a" ] <- NA # change all character n/a to actual NA
@@ -344,6 +362,100 @@ selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grep
 selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement") %>% dplyr::filter(measurement != "COMMENT")
 selfadmin_rewards_cohort7 <- selfadmin_df %>% dplyr::filter(measurement == "REWARDS")
 selfadmin_xl_cohort7 <- selfadmin_df
+
+
+
+########################
+# COHORT 8
+########################
+## Cancelled bc of COVID 
+
+
+########################
+# COHORT 9
+########################
+
+filename <- cohortfiles_xl_c01_10[7]
+selfadmin <- u01.importxlsx(filename)[[1]] %>%
+  as.data.table
+selfadmin[ selfadmin == "n/a" ] <- NA # change all character n/a to actual NA
+
+# set correct column names 
+# create date columns
+dates <- grep("^\\d+", names(selfadmin), value = T) # use these columns to make date columns # ignore the ...\\d columns
+dates <- as.character(as.POSIXct(as.numeric(dates) * (60*60*24), origin="1899-12-30", tz="UTC", format="%Y-%m-%d")) # convert Excel character into dates
+
+setnames(selfadmin, toupper(as.character(selfadmin[1,]) )) # now that dates are moved into separate vector, remove from the column names 
+setnames(selfadmin,  mgsub::mgsub(names(selfadmin), c("PR1", "PR2", "^T.+1$", "^T.+2$", "^T.+3$", "^T.+4$", "SHA.*?([0-9]{2})$", "LGA.*?([0-9]{2})$"), c("PR01", "PR02", "PR03_T01", "PR04_T02", "PR05_T03", "PR06_T04", "SHA\\1", "LGA\\1")))
+names(selfadmin)[1:2] <- c("RAT", "RFID")
+selfadmin <- selfadmin[-1,]
+selfadmin <- remove_empty(selfadmin, "cols") # janitor::remove_empty_cols() deprecated
+# selfadmin <- selfadmin[1:grep("average", selfadmin$RAT)[1],] # subset only the rewards table
+
+nm <- names(selfadmin)[-c(1:2)] # make date columns for this vector of exp names  ## MISSING THE RFID COLUMN SO THAT IS WHY [-1] INSTEAD OF [-c(1:2)] 
+nm1 <- paste("date", nm, sep = "_") # make these date columns
+selfadmin[ , ( nm1 ) := lapply( dates, function(x) rep(x, each = .N) ) ] # make the date columns 
+
+#extract comments
+comments_df <- selfadmin[which(selfadmin$RAT %in% c("COMMENT", "CONFLICT", "RESOLUTION"))]
+comments_df <- comments_df %>% select(-matches("RFID|date")) %>% t() %>% 
+  as.data.frame() %>% 
+  rownames_to_column()
+setnames(comments_df, append("EXP", comments_df[1, 2:3] %>% t() %>% unlist() %>% as.character) %>% tolower)
+comments_df <- comments_df[-1,]
+# selfadmin <- selfadmin[!which(selfadmin$RAT %in% c("COMMENT", "CONFLICT", "RESOLUTION"))]
+
+selfadmin_exps <- grep("REWARDS|ACTIVE|INACTIVE|PR$", selfadmin$RAT)
+selfadmin_split <- split(selfadmin, cumsum(1:nrow(selfadmin) %in% selfadmin_exps))
+names(selfadmin_split) <- lapply(selfadmin_split, function(x){ x$RAT %>% head(1)}) %>% unlist() %>% as.character()
+selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grepl("^[MF]\\d+", RAT))})
+selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement") %>% dplyr::filter(measurement != "COMMENT")
+selfadmin_rewards_cohort9 <- selfadmin_df %>% dplyr::filter(measurement == "REWARDS")
+selfadmin_xl_cohort9 <- selfadmin_df
+
+
+
+########################
+# COHORT 10
+########################
+
+filename <- cohortfiles_xl_c01_10[8]
+selfadmin <- u01.importxlsx(filename)[[1]] %>%
+  as.data.table
+selfadmin[ selfadmin == "n/a" ] <- NA # change all character n/a to actual NA
+
+# set correct column names 
+# create date columns
+dates <- grep("^\\d+", names(selfadmin), value = T) # use these columns to make date columns # ignore the ...\\d columns
+dates <- as.character(as.POSIXct(as.numeric(dates) * (60*60*24), origin="1899-12-30", tz="UTC", format="%Y-%m-%d")) # convert Excel character into dates
+
+setnames(selfadmin, toupper(as.character(selfadmin[1,]) )) # now that dates are moved into separate vector, remove from the column names 
+setnames(selfadmin,  mgsub::mgsub(names(selfadmin), c("PR1", "PR2", "^T.+1$", "^T.+2$", "^T.+3$", "^T.+4$", "SHA.*?([0-9]{2})$", "LGA.*?([0-9]{2})$"), c("PR01", "PR02", "PR03_T01", "PR04_T02", "PR05_T03", "PR06_T04", "SHA\\1", "LGA\\1")))
+names(selfadmin)[1:2] <- c("RAT", "RFID")
+selfadmin <- selfadmin[-1,]
+selfadmin <- remove_empty(selfadmin, "cols") # janitor::remove_empty_cols() deprecated
+# selfadmin <- selfadmin[1:grep("average", selfadmin$RAT)[1],] # subset only the rewards table
+
+nm <- names(selfadmin)[-c(1:2)] # make date columns for this vector of exp names  ## MISSING THE RFID COLUMN SO THAT IS WHY [-1] INSTEAD OF [-c(1:2)] 
+nm1 <- paste("date", nm, sep = "_") # make these date columns
+selfadmin[ , ( nm1 ) := lapply( dates, function(x) rep(x, each = .N) ) ] # make the date columns 
+
+#extract comments
+comments_df <- selfadmin[which(selfadmin$RAT %in% c("COMMENT", "CONFLICT", "RESOLUTION"))]
+comments_df <- comments_df %>% select(-matches("RFID|date")) %>% t() %>% 
+  as.data.frame() %>% 
+  rownames_to_column()
+setnames(comments_df, append("EXP", comments_df[1, 2:3] %>% t() %>% unlist() %>% as.character) %>% tolower)
+comments_df <- comments_df[-1,]
+# selfadmin <- selfadmin[!which(selfadmin$RAT %in% c("COMMENT", "CONFLICT", "RESOLUTION"))]
+
+selfadmin_exps <- grep("REWARDS|ACTIVE|INACTIVE|PR$", selfadmin$RAT)
+selfadmin_split <- split(selfadmin, cumsum(1:nrow(selfadmin) %in% selfadmin_exps))
+names(selfadmin_split) <- lapply(selfadmin_split, function(x){ x$RAT %>% head(1)}) %>% unlist() %>% as.character()
+selfadmin_split <- lapply(selfadmin_split, function(x){ x %>% dplyr::filter(grepl("^[MF]\\d+", RAT))})
+selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement") %>% dplyr::filter(measurement != "COMMENT")
+selfadmin_rewards_cohort10 <- selfadmin_df %>% dplyr::filter(measurement == "REWARDS")
+selfadmin_xl_cohort10 <- selfadmin_df
 
 
 
