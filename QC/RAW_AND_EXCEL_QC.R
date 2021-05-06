@@ -47,6 +47,18 @@ oxy_xl_sha_df_qc <- oxy_xl_sha_df %>%
   left_join(compromised_rats[, c("labanimalid", "death_comment")], by = "labanimalid")
 
 
+
+oxy_xl_sha_df_qc %>% 
+  subset(is.na(rewards_QC) | rewards_QC == "fail") %>% 
+   View()
+  
+## qc'ed 
+oxy_xl_sha_df_qced <- oxy_xl_sha_df_qc %>%
+  left_join(openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/decision_oxy_qc_sha.xlsx") %>% select(rfid, filename, decision), by = c("rfid", "filename") ) %>%
+  rename("rewards" = "decision") %>%
+  mutate(rewards = coalesce(rewards, rewards_raw))
+
+
 # oxy_xl_sha_df <- bind_rows(sha_rewards_new, sha_rewards_old) %>%
 #   select(cohort, labanimalid, exp, rewards, filename) %>% 
 #   rename("rewards_raw" = "rewards") %>% 
@@ -67,9 +79,9 @@ oxy_xl_sha_df_qc <- oxy_xl_sha_df %>%
 #   arrange(cohort, sex, labanimalid_num) %>% select(-labanimalid_num) %>% 
 #   openxlsx::write.xlsx(file = "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxy_qc_sha.xlsx")
 # 
-# oxy_xl_sha_df_qced <- oxy_xl_sha_df %>% 
-#   left_join(openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/decision_oxy_qc_sha.xlsx") %>% select(rfid, filename, decision), by = c("rfid", "filename") ) %>% 
-#   rename("rewards" = "decision") %>% 
+# oxy_xl_sha_df_qced <- oxy_xl_sha_df %>%
+#   left_join(openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/decision_oxy_qc_sha.xlsx") %>% select(rfid, filename, decision), by = c("rfid", "filename") ) %>%
+#   rename("rewards" = "decision") %>%
 #   mutate(rewards = coalesce(rewards, rewards_raw))
 # 
 # oxy_xl_sha_df_qced %>% ggplot(aes(x = rewards_raw, y = rewards_xl)) + geom_point()
@@ -191,39 +203,113 @@ oxy_xl_pr_df_qc <- oxy_xl_pr_df %>%
 
 
 
-
-
-
-
 ## create excels for olivier team to fix 
 oxy_xl_pr_df_qc %>% 
   select(cohort, labanimalid, exp, rfid, filename, room, matches("rewards_"), death_comment) %>% 
   subset(is.na(rewards_QC) | rewards_QC == "fail") %>% 
   arrange(cohort, str_extract(labanimalid, "[MF]"), parse_number(labanimalid), exp) %>% 
-  openxlsx::write.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_rewards_qc_c01_07.xlsx")
+  openxlsx::write.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_rewards_qc_c01_07_pr.xlsx")
 
 oxy_xl_pr_df_qc %>% 
   select(cohort, labanimalid, exp, rfid, filename, room, matches("^active_"), death_comment) %>% 
   subset(is.na(active_QC) | active_QC == "fail") %>% 
   arrange(cohort, str_extract(labanimalid, "[MF]"), parse_number(labanimalid), exp) %>% 
-  openxlsx::write.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_active_qc_c01_07.xlsx")
+  openxlsx::write.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_active_qc_c01_07_pr.xlsx")
 
 oxy_xl_pr_df_qc %>% 
   select(cohort, labanimalid, exp, rfid, filename, room, matches("^inactive_"), death_comment) %>% 
   subset(is.na(inactive_QC) | inactive_QC == "fail") %>% 
   arrange(cohort, str_extract(labanimalid, "[MF]"), parse_number(labanimalid), exp) %>% 
-  openxlsx::write.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_inactive_qc_c01_07.xlsx")
+  openxlsx::write.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_inactive_qc_c01_07_pr.xlsx")
 
 oxy_xl_pr_df_qc %>% 
   select(cohort, labanimalid, exp, rfid, filename, room, matches("^pr_breakpoint_"), death_comment) %>% 
   subset(is.na(pr_breakpoint_QC) | pr_breakpoint_QC == "fail") %>% 
   arrange(cohort, str_extract(labanimalid, "[MF]"), parse_number(labanimalid), exp) %>% 
-  openxlsx::write.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_pr_breakpoint_qc_c01_07.xlsx")
+  openxlsx::write.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/oxy_pr_breakpoint_qc_c01_07_pr.xlsx")
+
+## qc'ed 
+# compile all Lani decision files 
+pr_fail_c01_07 <- lapply(list.files(path = "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451 (Oxy)/excel_and_csv_files", pattern = ".*c01_07 LT_pr", full.names = T), openxlsx::read.xlsx) %>% 
+  rbindlist(fill = T)
+
+oxy_xl_pr_df_qced <- oxy_xl_pr_df_qc %>% 
+  left_join(pr_fail_c01_07)
 
 
+# rewards
+oxy_pr_rewards_qced <- oxy_xl_pr_df_qc %>% 
+  select(cohort, labanimalid, exp, rfid, filename, room, box, matches("^rewards_"), death_comment) %>% 
+  left_join(openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451 (Oxy)/excel_and_csv_files/oxy_rewards_qc_c01_07 LT_pr.xlsx"), by = c("cohort", "labanimalid", "exp", "rfid", "filename", "room", "rewards_raw", "rewards_xl", "rewards_QC_diff", "rewards_QC", "death_comment"))
 
+oxy_pr_rewards_qced_gwas <- oxy_pr_rewards_qced %>% 
+  mutate(rewards = ifelse(!is.na(decision), decision, rewards_raw)) %>% 
+  select(-matches("_raw|xl|QC|decision|source")) %>% 
+  rename("comment_rewards" = "comment") %>% 
+  subset(labanimalid != "M129") 
+# active
+oxy_pr_active_qced <- oxy_xl_pr_df_qc %>% 
+  select(cohort, labanimalid, exp, rfid, filename, room, box, matches("^active_"), death_comment) %>% 
+  left_join(openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451 (Oxy)/excel_and_csv_files/oxy_active_qc_c01_07 LT_pr.xlsx"), by = c("cohort", "labanimalid", "exp", "rfid", "filename", "room", "active_raw", "active_xl", "active_QC_diff", "active_QC", "death_comment"))
 
+oxy_pr_active_qced_gwas <- oxy_pr_active_qced %>% 
+  mutate(active = ifelse(!is.na(decision), decision, active_raw)) %>% 
+  select(-matches("_raw|xl|QC|decision|source")) %>% 
+  rename("comment_active" = "comment") %>% 
+  subset(labanimalid != "M129") 
+# inactive 
+oxy_pr_inactive_qced <- oxy_xl_pr_df_qc %>% 
+  select(cohort, labanimalid, exp, rfid, filename, room, box, matches("^inactive_"), death_comment) %>% 
+  left_join(openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451 (Oxy)/excel_and_csv_files/oxy_inactive_qc_c01_07 LT_pr.xlsx"), by = c("cohort", "labanimalid", "exp", "rfid", "filename", "room", "inactive_raw", "inactive_xl", "inactive_QC_diff", "inactive_QC", "death_comment"))
 
+oxy_pr_inactive_qced_gwas <- oxy_pr_inactive_qced %>% 
+  mutate(inactive = ifelse(!is.na(decision), decision, inactive_raw)) %>% 
+  select(-matches("_raw|xl|QC|decision|source")) %>% 
+  rename("comment_inactive" = "comment") %>% 
+  subset(labanimalid != "M129") 
+
+# pr_breakpoint
+oxy_pr_breakpoint_qced <- oxy_xl_pr_df_qc %>% 
+  select(cohort, labanimalid, exp, rfid, filename, room, box, matches("^pr_breakpoint_"), death_comment) %>% 
+  left_join(openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451 (Oxy)/excel_and_csv_files/oxy_pr_breakpoint_qc_c01_07 LT_pr.xlsx"), by = c("cohort", "labanimalid", "exp", "rfid", "filename", "room", "pr_breakpoint_raw", "pr_breakpoint_xl", "pr_breakpoint_QC_diff", "pr_breakpoint_QC"))
+
+oxy_pr_breakpoint_qced_gwas <- oxy_pr_breakpoint_qced %>% 
+  mutate(pr_breakpoint = ifelse(!is.na(decision), decision, pr_breakpoint_raw)) %>% 
+  select(-matches("_raw|xl|QC|decision|source")) %>% 
+  rename("comment_breakpoint" = "comment") %>% 
+  subset(labanimalid != "M129") 
+#### 
+# create gwas object for Apurva 
+pr_gwas_c01_07 <- full_join(oxy_pr_rewards_qced_gwas, oxy_pr_active_qced_gwas %>% select(-filename, -room, -box, -death_comment), by = c("cohort", "labanimalid", "exp", "rfid")) %>% 
+  full_join(oxy_pr_inactive_qced_gwas %>% select(-filename, -room, -box, -death_comment), by = c("cohort", "labanimalid", "exp", "rfid")) %>% 
+  full_join(oxy_pr_breakpoint_qced_gwas %>% select(-filename, -room, -box, -death_comment), by = c("cohort", "labanimalid", "exp", "rfid")) %>% 
+  mutate_at(vars(matches("comment_")), ~ ifelse(. == "wrong rfid", NA, .)) %>%  
+  ## remove the ones with dupes from replacements
+  subset(!(labanimalid %in% (
+    full_join(oxy_pr_rewards_qced_gwas, oxy_pr_active_qced_gwas%>% select(-filename, -room, -box, -death_comment), by = c("cohort", "labanimalid", "exp", "rfid")) %>% 
+      full_join(oxy_pr_inactive_qced_gwas %>% select(-filename, -room, -box, -death_comment), by = c("cohort", "labanimalid", "exp", "rfid")) %>% 
+      full_join(oxy_pr_breakpoint_qced_gwas %>% select(-filename, -room, -box, -death_comment), by = c("cohort", "labanimalid", "exp", "rfid")) %>% 
+      mutate_at(vars(matches("comment_")), ~ ifelse(. == "wrong rfid", NA, .)) %>% get_dupes(labanimalid, exp) %>% select(labanimalid) %>% unlist() %>% as.character
+  )&grepl("surgery", death_comment))) %>%
+  select(-filename) %>% 
+  distinct %>% 
+  group_by(labanimalid) %>% 
+  fill(room) %>% 
+  fill(box) %>%
+  fill(room, .direction =  "updown") %>% 
+  fill(box,.direction =  "updown") %>% 
+  select(-matches("comment_")) %>% 
+  ungroup() %>% 
+  
+  pivot_wider(names_from = exp,
+              values_from = c(rewards, active, inactive, pr_breakpoint)) %>% 
+  subset(grepl("C0[1-7]$", cohort)) %>%  # only qc'ed up to this point
+  mutate(sex = gsub(".*([MF]).*", "\\1", labanimalid)) 
+
+pr_gwas_c01_07 <- pr_gwas_c01_07 %>% left_join(oxy_metadata_df %>% distinct(rat, rfid), by = c("labanimalid" = "rat")) %>% 
+  rename("rfid" = "rfid.x") %>% 
+  mutate(rfid = ifelse(is.na(rfid), rfid.y, rfid)) %>% 
+  select(-rfid.y)
 
 
 

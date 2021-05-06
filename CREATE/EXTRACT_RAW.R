@@ -1,6 +1,6 @@
 ## extract raw 
 setwd("~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS")
-# after cohort 3, there are only new files
+# after cohort 3, there are only files in the new directory 
 
 
 ## USEFUL FUNCTIONS
@@ -111,7 +111,7 @@ read_fread_old <- function(x, varname){
 }
 
 
-############# (consider adding this code form cocaine to extract all three -- active, inactive, and rewards)
+############# (consider adding this code from cocaine to extract all three -- active, inactive, and rewards)
 read_fread_new <- function(x, varname){
   
   fread_statements <- data.frame(varname = c("leftresponses", "rightresponses", "rewards", "lefttimestamps", "righttimestamps", "rewardstimestamps"),
@@ -376,10 +376,10 @@ sha_phenotypes_old <- sha_old_files_c01_10 %>% lapply(function(x){
   
   metadata = cbind(subject = subject, box = box)
   
-  rewards = fread(paste0("awk '/totalRewards/{flag=1;next}/TotalResponses/{flag=0}flag' ", "'", x, "' | sed \"s/[[:blank:]]//g\""), fill = T, header = F)
+  active = fread(paste0("awk '/totalRewards/{flag=1;next}/TotalResponses/{flag=0}flag' ", "'", x, "' | sed \"s/[[:blank:]]//g\""), fill = T, header = F)
   inactive = fread(paste0("awk '/TotalRspInAct/{flag=1;next}/TotalTORspInAct/{flag=0}flag' ", "'", x, "'  sed \"s/[[:blank:]]//g\""), fill = T, header = F)
 
-  data = list("rewards" = rewards,
+  data = list("active" = active,
               "inactive" = inactive  
               ) %>% do.call(cbind, .)
   
@@ -400,8 +400,8 @@ sha_phenotypes_old_df <- sha_phenotypes_old %>%
 
 sha_phenotypes_old_df %>% get_dupes(subject, exp)
 ## case: deal with mislabelled subject?
-sha_phenotypes_old_df <- sha_phenotypes_old_df %>% subset(!((grepl("K3C01HSOXYSHA01-20180730.txt", filename)&subject == "M153"&rewards==0)|(grepl("K3C01HSOXYSHA01-20180730.txt", filename)&subject == "M155"&rewards==0))) #  5/28 "ignore the first occurence of box 5 and box 6 in K3C01HSOXYSHA01-20180730.txt" - Lauren
-sha_phenotypes_old_df <- sha_phenotypes_old_df %>% add_count(subject, cohort,exp) %<>% dplyr::filter(n == 1|(n!=1&rewards!=0)) %<>% select(-n)
+sha_phenotypes_old_df <- sha_phenotypes_old_df %>% subset(!((grepl("K3C01HSOXYSHA01-20180730.txt", filename)&subject == "M153"&active==0)|(grepl("K3C01HSOXYSHA01-20180730.txt", filename)&subject == "M155"&active==0))) #  5/28 "ignore the first occurence of box 5 and box 6 in K3C01HSOXYSHA01-20180730.txt" - Lauren
+sha_phenotypes_old_df <- sha_phenotypes_old_df %>% add_count(subject, cohort,exp) %<>% dplyr::filter(n == 1|(n!=1&active!=0)) %<>% select(-n)
 
 
 
@@ -535,10 +535,10 @@ lga_phenotypes_old <- lga_old_files_c01_10[1:82] %>% lapply(function(x){
   
   metadata = cbind(subject = subject, box = box)
   
-  rewards = fread(paste0("awk '/totalRewards/{flag=1;next}/TotalResponses/{flag=0}flag' ", "'", x, "' | sed \"s/[[:blank:]]//g\""), fill = T, header = F)
+  active = fread(paste0("awk '/totalRewards/{flag=1;next}/TotalResponses/{flag=0}flag' ", "'", x, "' | sed \"s/[[:blank:]]//g\""), fill = T, header = F)
   inactive = fread(paste0("awk '/TotalRspInAct/{flag=1;next}/TotalTORspInAct/{flag=0}flag' ", "'", x, "'  sed \"s/[[:blank:]]//g\""), fill = T, header = F)
   
-  data = list("rewards" = rewards,
+  data = list("active" = active,
               "inactive" = inactive  
   ) %>% do.call(cbind, .)
   
@@ -718,11 +718,11 @@ pr_phenotypes_old <- pr_old_files_c01_07 %>% lapply(function(x){
   
   metadata = cbind(subject = subject, box = box)
   
-  rewards = fread(paste0("awk '/totalRewards/{flag=1;next}/TotalResponses/{flag=0}flag' ", "'", x, "' | sed \"s/[[:blank:]]//g\""), fill = T, header = F)
+  active = fread(paste0("awk '/totalRewards/{flag=1;next}/TotalResponses/{flag=0}flag' ", "'", x, "' | sed \"s/[[:blank:]]//g\""), fill = T, header = F)
   inactive = fread(paste0("awk '/TotalRspInAct/{flag=1;next}/TotalTORspInAct/{flag=0}flag' ", "'", x, "'  sed \"s/[[:blank:]]//g\""), fill = T, header = F)
   pr_breakpoint = fread(paste0("awk '/^fr/{flag=1;next}/RewarfDuration/{flag=0}flag' ", "'", x, "' | sed \"s/[[:blank:]]//g\""), fill = T, header = F)
   
-  data = list("rewards" = rewards,
+  data = list("active" = active,
               "inactive" = inactive, 
               "pr_breakpoint" = pr_breakpoint
   ) %>% do.call(cbind, .)
@@ -751,7 +751,7 @@ pr_phenotypes_old_df %>%  subset(!grepl("M|F(\\d){3}", subject)) %>% select(subj
 # pr_phenotypes_old_df %>% get_dupes(labanimalid, exp)
 
 pr_phenotypes_old_df <- pr_phenotypes_old_df %>% 
-dplyr::filter(!(subject=="F120"&rewards=="0"&exp=="PR05_T03"))
+dplyr::filter(!(subject=="F120"&active=="0"&exp=="PR05_T03"))
   
 pr_phenotypes_old_df %>% 
   naniar::vis_miss()

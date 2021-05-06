@@ -45,7 +45,8 @@ olivieroxy_excel_all <- list(
 
 olivieroxy_excel_all <- olivieroxy_excel_all %>% 
   subset(!grepl("\\D+:", labanimalid)) %>% 
-  naniar::replace_with_na_all(condition = ~.x %in% c("N/A"))
+  naniar::replace_with_na_all(condition = ~.x %in% c("N/A")) %>% 
+  subset(!(is.na(labanimalid)&cohort %in% c("C01", "C03", "C04"))) # add to investigate other cohorts before removing, ensure with naniar::vis_miss()
 
   
 rm(list = ls(pattern = "selfadmin_(xl|rewards)|cohortinfo|comments_df|selfadmin(_df)?|nm(1)?|dates"))
@@ -68,14 +69,37 @@ oxy_metadata_df <- oxy_metadata %>%
   subset(grepl("^\\d{15}$", RFID)) %>% 
   mutate(cohort = gsub(".*(C\\d+).*", "\\1", cohort),
          sex = gsub(".*([MF]).*", "\\1", RAT)) %>% 
-  clean_names %>% 
-  select(cohort, rat, rfid, sex)
+  clean_names 
+# %>% 
+  # select(cohort, rat, rfid, sex)
 
-oxy_metadata_df <- oxy_metadata_df %>% 
-  rename("labanimalid" = "rat") %>% 
-  rbind(olivieroxy_excel_all %>% subset(cohort %in% c("C09", "C10")) %>% select(cohort, labanimalid, rfid) %>% 
-          mutate(sex = gsub(".*([MF]).*", "\\1", labanimalid))) %>% 
-  distinct()
+# don't need when all information sheets are updated 
+# oxy_metadata_df <- oxy_metadata_df %>% 
+#   rename("labanimalid" = "rat") %>% 
+#   rbind(olivieroxy_excel_all %>% subset(cohort %in% c("C09", "C10")) %>% select(cohort, labanimalid, rfid) %>% 
+#           mutate(sex = gsub(".*([MF]).*", "\\1", labanimalid))) %>% 
+#   distinct()
+
+## oxy treatment groups 
+oxy_treatment <- oxy_metadata_df %>% rename("labanimalid" = "rat") %>% select(cohort, rfid, labanimalid, matches("treatment")) %>% select(cohort, rfid, labanimalid, matches("group")) %>% 
+  rowwise() %>% 
+  mutate_at(vars(-cohort, -rfid, -labanimalid), ~ case_when(
+    grepl("^Met", .) ~ "methadone",
+    grepl("rexone$", .) ~ "naltrexone",
+    grepl("^Bup", .) ~ "buprenorphine",
+    grepl("^Veh", .) ~ "vehicle",
+    TRUE ~ NA_character_
+  )) %>% 
+  ungroup() %>% 
+  gather("exp", "treatment", treatment_1_group:treatment_4_group) %>% 
+  mutate(exp = case_when(
+    exp == "treatment_1_group" ~ "pr03_t01",
+    exp == "treatment_2_group" ~ "pr04_t02",
+    exp == "treatment_3_group" ~ "pr05_t03",
+    exp == "treatment_4_group" ~ "pr06_t04",
+    TRUE ~ NA_character_
+  ))
+
 
 write.csv(oxy_metadata_df, "~/Desktop/Database/csv files/u01_olivier_george_oxycodone/oxy_metadata_sex.csv", row.names = F)
 
@@ -123,6 +147,17 @@ selfadmin_df <- selfadmin_split %>% rbindlist(idcol = "measurement") %>% dplyr::
 selfadmin_rewards_cohort1 <- selfadmin_df %>% dplyr::filter(measurement == "ACTIVE")
 selfadmin_xl_cohort1 <- selfadmin_df %>% ## Lani notes on 03/12 "Rewards data for this cohort is under Active; Inactive data is inactive"
   mutate(measurement = replace(measurement, measurement == "ACTIVE", "REWARDS"))
+
+# fixing until Lani updates the Excel files
+selfadmin_xl_cohort1 <- selfadmin_xl_cohort1 %>% 
+  left_join(oxy_metadata_df %>% select(-cohort, -sex), by = c("RAT" = "rat")) %>% 
+  rowwise() %>%
+  mutate(RFID = replace(RFID, RFID != rfid, rfid)) %>% 
+  select(-rfid) %>% 
+  ungroup()
+
+selfadmin_xl_cohort1 %>% distinct(RAT, RFID) %>% get_dupes(RAT)
+
 
 ########################
 # COHORT 3
@@ -241,7 +276,7 @@ selfadmin_xl_cohort4 <- selfadmin_xl_cohort4 %>%
 ########################
 # filename <- cohortfiles_xl_c01_10[4]
 
-filename <- "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451/excel_and_csv_files/OXY GWAS C05 Data.xlsx" # XX temp for Lani 
+filename <- "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451 (Oxy)/excel_and_csv_files/OXY GWAS C05 Data.xlsx" # XX temp for Lani 
 selfadmin <- u01.importxlsx(filename)[[1]] %>%
   # u01.importxlsx(filename) %>%
   as.data.table
@@ -252,8 +287,8 @@ selfadmin[ selfadmin == "n/a" ] <- NA # change all character n/a to actual NA
 dates <- grep("^\\d+", names(selfadmin), value = T) # use these columns to make date columns # ignore the ...\\d columns
 dates <- as.character(as.POSIXct(as.numeric(dates) * (60*60*24), origin="1899-12-30", tz="UTC", format="%Y-%m-%d")) # convert Excel character into dates
 
-setnames(selfadmin, toupper(as.character(selfadmin[1,]) )) # now that dates are moved into separate vector, remove from the column names 
-setnames(selfadmin,  mgsub::mgsub(names(selfadmin), c("PR1", "PR2", "^T.+1$", "^T.+2$", "^T.+3$", "^T.+4$", "SHA.*?([0-9]{2})$", "LGA.*?([0-9]{2})$"), c("PR01", "PR02", "PR03_T01", "PR04_T02", "PR05_T03", "PR06_T04", "SHA\\1", "LGA\\1")))
+setnames(selfadmin, toupper(as.character(janitor::make_clean_names(selfadmin[1,]))) %>% gsub("(\\D{2})_(\\D)_", "\\1\\2_", .) ) # now that dates are moved into separate vector, remove from the column names 
+setnames(selfadmin,  mgsub::mgsub(names(selfadmin), c("^PR$", "PR_2", "^TREATMENT_PR$", "^T.+2$", "^T.+3$", "^T.+4$", "SHA.*?([0-9]{2})$", "LGA.*?([0-9]{2})$"), c("PR01", "PR02", "PR03_T01", "PR04_T02", "PR05_T03", "PR06_T04", "SHA\\1", "LGA\\1")))
 names(selfadmin)[1:2] <- c("RAT", "RFID")
 selfadmin <- selfadmin[-1,]
 selfadmin <- remove_empty(selfadmin, "cols") # janitor::remove_empty_cols() deprecated
@@ -336,7 +371,7 @@ selfadmin_df <- selfadmin_df %>%
          SHA03 = replace(SHA03, measurement == "PR", NA),
          SHA04 = replace(SHA04, measurement == "PR", NA),
          LGA01 = replace(LGA01, measurement == "PR", NA)) %>% 
-  ungroup()s
+  ungroup()
 selfadmin_xl_cohort6 <- selfadmin_df
 
 

@@ -152,4 +152,8 @@ oxy_xl_pr_df_qc %>%
   write.csv("~/Desktop/Database/csv files/u01_olivier_george_oxycodone/pr_gwas_inactive_oxy.csv", row.names = F)
 
 
+pr_gwas_c01_07 %>%  
+  write.csv("~/Desktop/Database/csv files/u01_olivier_george_oxycodone/pr_gwas_tier2_oxy_c01_07.csv", row.names = F)
+
+
 

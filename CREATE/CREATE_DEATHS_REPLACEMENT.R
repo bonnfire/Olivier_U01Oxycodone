@@ -67,9 +67,8 @@ compromised_rats <- left_join(ratinfo_list_deaths, ratinfo_list_replacements %>%
          rfid = ifelse(grepl("Renumbered", comment), rfidreplacement, rfid_compromised)) %>% 
   # mutate(labanimalid = coalesce(rfidreplacement, tailmark)) %>%  # labanimalid is the one ultimately used 
   mutate(death_comment = gsub("^ | $", "", death_comment))
-
-
-
+ 
+rm(list = ls(pattern = "ratinfo_list_deaths|ratinfo_list_replacements"))
 
 
 
