@@ -44,8 +44,9 @@ olivieroxy_excel_all <- list(
          measurement = gsub("^REWARDS.*", "rewards", measurement)) 
 
 olivieroxy_excel_all <- olivieroxy_excel_all %>% 
-  subset(!grepl("\\D+:", labanimalid))
-  
+  subset(!grepl("\\D+:", labanimalid)) %>% 
+  naniar::replace_with_na_all(condition = ~.x %in% c("N/A"))
+
   
 rm(list = ls(pattern = "selfadmin_(xl|rewards)|cohortinfo|comments_df|selfadmin(_df)?|nm(1)?|dates"))
 
@@ -59,6 +60,24 @@ u01.importxlsx <- function(xlname){
   names(df) <- excel_sheets(xlname)
   return(df)
 }
+
+oxy_metadata <- lapply(cohortinfofiles, openxlsx::read.xlsx)
+names(oxy_metadata) <- cohortinfofiles
+oxy_metadata_df <- oxy_metadata %>% 
+  rbindlist(fill = T, idcol = "cohort") %>% 
+  subset(grepl("^\\d{15}$", RFID)) %>% 
+  mutate(cohort = gsub(".*(C\\d+).*", "\\1", cohort),
+         sex = gsub(".*([MF]).*", "\\1", RAT)) %>% 
+  clean_names %>% 
+  select(cohort, rat, rfid, sex)
+
+oxy_metadata_df <- oxy_metadata_df %>% 
+  rename("labanimalid" = "rat") %>% 
+  rbind(olivieroxy_excel_all %>% subset(cohort %in% c("C09", "C10")) %>% select(cohort, labanimalid, rfid) %>% 
+          mutate(sex = gsub(".*([MF]).*", "\\1", labanimalid))) %>% 
+  distinct()
+
+write.csv(oxy_metadata_df, "~/Desktop/Database/csv files/u01_olivier_george_oxycodone/oxy_metadata_sex.csv", row.names = F)
 
 
 cohortfiles_xl_c01_10 <- list.files(path = "~/Dropbox (Palmer Lab)/Olivier_George_U01/GWAS Self Administration Data/Oxy Data", pattern = "*.xlsx", full.names = T) %>% grep("C(0[1-9]|1[0])", ., value = T)

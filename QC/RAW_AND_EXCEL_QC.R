@@ -151,13 +151,16 @@ oxy_xl_lga_df_qced %>% ggplot(aes(x = rewards_raw, y = rewards)) + geom_point()
 # pr to be qc'ed by oxy team 
 
 oxy_xl_pr_df <- bind_rows(pr_msn_df, pr_phenotypes_old_df) %>%
-  select(cohort, labanimalid, exp, rewards, active, inactive, pr_breakpoint, room, filename) %>% 
-  rename_at(vars(matches("rewards|active|breakpoint")), ~paste0(., "_raw")) %>% 
+  mutate(pr_breakpoint = coalesce(pr_breakpoint, as.integer(pr))) %>% 
+  select(cohort, subject, exp, rewards, active, inactive, pr_breakpoint, room, filename, box) %>% 
+  rename("labanimalid" = "subject") %>% 
+  rename_at(vars(matches("rewards|active|break")), ~paste0(., "_raw")) %>% 
   mutate(exp = tolower(exp)) %>% 
   full_join(olivieroxy_excel_all %>% select(matches("cohort|labanimalid|rfid|^pr\\d|measurement")) %>% 
+              # subset(measurement == "pr_breakpoint") %>% 
               distinct() %>% gather("exp", "session", -cohort, -rfid, -measurement, -labanimalid) %>% 
               spread(measurement, session) %>% 
-              rename_at(vars(matches("rewards|active|breakpoint")), ~paste0(., "_xl")) %>% 
+              rename_at(vars(matches("rewards|active|break")), ~paste0(., "_xl")) %>% 
               select_if(~sum(!is.na(.))>0) %>% 
               mutate(rfid = as.character(rfid)),
             by = c("cohort", "labanimalid", "exp")) %>% 
@@ -172,7 +175,6 @@ oxy_xl_pr_df %>% ggplot(aes(x = active_raw, y = active_xl)) + geom_point()
 oxy_xl_pr_df %>% ggplot(aes(x = inactive_raw, y = inactive_xl)) + geom_point()
 oxy_xl_pr_df %>% ggplot(aes(x = pr_breakpoint_raw, y = pr_breakpoint_xl)) + geom_point()
 
-oxy_xl_pr_df %>% ggplot(aes(x = pr_breakpoint_raw, y = pr_breakpoint_xl)) + geom_point()
 oxy_xl_pr_df %>% select(cohort, exp, matches("_(raw|xl)$")) %>% group_by(cohort, exp) %>% summarize_each(~sum(is.na(.))) %>% ungroup() %>% View() #prop.table()
 
 oxy_xl_pr_df_qc <- oxy_xl_pr_df %>% 
@@ -186,6 +188,11 @@ oxy_xl_pr_df_qc <- oxy_xl_pr_df %>%
          pr_breakpoint_QC = ifelse(pr_breakpoint_QC_diff == 0, "pass", "fail")
   ) %>% 
   left_join(compromised_rats[, c("labanimalid", "death_comment")], by = "labanimalid")
+
+
+
+
+
 
 
 ## create excels for olivier team to fix 

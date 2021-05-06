@@ -775,12 +775,18 @@ pr_phenotypes_old_df %>%
 
 ### Extract timeout presses
 
+## troubleshooting missing lga data
+openxlsx::read.xlsx("~/Downloads/All Oxy GWAS data_2.xlsx") %>% 
+  naniar::vis_miss()
+openxlsx::read.xlsx("~/Downloads/All Oxy GWAS data_2.xlsx")
+
 #####
 ## lga
 #####
 
 lga_c01_07_files <- list.files(path = "~/Dropbox (Palmer Lab)/GWAS (1)/Oxycodone/Oxycodone GWAS", recursive = T, full.names = T) %>% 
-  grep("LGA", ., value = T)
+  grep("LGA", ., value = T) %>% 
+  grep("C(0[1-7])", ., value = T) #474
 
 
 lga_c01_07_timeout <- lapply(lga_c01_07_files, function(x){
@@ -819,6 +825,14 @@ lga_c01_07_timeout_df <- lga_c01_07_timeout %>% rbindlist() %>%
   ) %>% 
   select(cohort, labanimalid, sex, session, box, room, to_active_presses, filename) 
 
+lga_c01_07_files %>% as.data.frame() %>% 
+  subset(grepl("C07", .)) %>% 
+  mutate(exp = str_extract(.,"LGA\\d+"),
+         room = str_extract(., "BSB273\\D")) %>% 
+  select(exp, room) %>% 
+  table()
+
+
 lga_c01_07_timeout_trials1_14 <- lga_c01_07_timeout_df %>% 
   subset(parse_number(session) < 15) %>% 
   mutate(box = as.character(box))
@@ -849,10 +863,10 @@ lga_c01_07_timeout_trials1_14_brent <- lga_c01_07_timeout_trials1_14_distinct %>
   select(-labanimalid_num)
 
 
-openxlsx::write.xlsx(lga_c01_07_timeout_trials1_14_brent, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses.xlsx")
+# openxlsx::write.xlsx(lga_c01_07_timeout_trials1_14_brent, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses.xlsx")
 
 # use brent's file to correct 
-lga_c01_07_timeout_brent_decision <- openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses_BB.xlsx") %>% 
+lga_c01_07_timeout_brent_decision <- openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451 (Oxy)/excel_and_csv_files/oxycodone_lga_to_presses_BB.xlsx") %>% 
   clean_names() %>% 
   mutate_all(as.character) %>% 
   subset(is.na(decision)|decision=="KEEP") 
@@ -872,9 +886,9 @@ lga_c01_07_timeout_brent_decision_dev <- lga_c01_07_timeout_brent_decision %>%
   arrange(cohort, sex, labanimalid_num) %>% 
   select(-labanimalid_num)
 
-openxlsx::write.xlsx(lga_c01_07_timeout_brent_decision_dev, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses_wide_dev.xlsx")
+# openxlsx::write.xlsx(lga_c01_07_timeout_brent_decision_dev, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses_wide_dev.xlsx")
 
-lga_c01_07_timeout_final <- openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses_wide_dev_BB.xlsx") %>% 
+lga_c01_07_timeout_final <- openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/U01/Olivier_George_U01DA044451 (Oxy)/excel_and_csv_files/oxycodone_lga_to_presses_wide_dev_BB.xlsx") %>% 
   clean_names() %>% 
   mutate_all(as.character) %>% 
   select(-matches("mean$|_dev$")) %>% 
@@ -890,7 +904,7 @@ lga_c01_07_timeout_final <- openxlsx::read.xlsx("~/Dropbox (Palmer Lab)/Palmer L
   arrange(cohort, sex, labanimalid_num) %>% 
   select(-labanimalid_num) 
 
-openxlsx::write.xlsx(lga_c01_07_timeout_final, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses_final.xlsx")
+# openxlsx::write.xlsx(lga_c01_07_timeout_final, "~/Dropbox (Palmer Lab)/Palmer Lab/Bonnie Lin/github/Olivier_U01Oxycodone/CREATE/oxycodone_lga_to_presses_final.xlsx")
 
 
 
